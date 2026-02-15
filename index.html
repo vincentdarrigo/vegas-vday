@@ -368,7 +368,8 @@
     const HUSBAND_SCORE_THRESHOLD = 500; 
 
     // ASSETS
-    const ASSET_NAMES = ['wife3', 'idle', 'husband', 'cupid1', 'cupid2', 'parlay', 'ramsay', 'sheldon', 'pizza', 'pasta', 'potato', 'shrimp', 'box', 'hug', 'vegas', 'winner', 'slots'];
+    // Added 'punch' and 'stomp'
+    const ASSET_NAMES = ['wife3', 'idle', 'husband', 'cupid1', 'cupid2', 'parlay', 'ramsay', 'sheldon', 'pizza', 'pasta', 'potato', 'shrimp', 'box', 'hug', 'vegas', 'winner', 'slots', 'punch', 'stomp'];
     const AUDIO_NAMES = ['hangover', 'ramsay', 'bazinga', 'loveyoubumbum', 'chaching', 'endgame', 'splat'];
     const VIDEO_PLAYLIST = [
         'if-youre-into-it.mp4',
@@ -438,6 +439,7 @@
     };
 
     // WINNER ANIMATION
+    // State can be: RUN_TO_HUG, HUGGING, PUNCHING, STOMPING
     let winAnim = { wifeX: -150, husbX: 0, groundY: 0, items: [], spawnTimer: 0, state: 'RUN_TO_HUG', kickTimer: 0 };
 
     window.onload = function() {
@@ -1002,15 +1004,30 @@
             }
         }
 
+        // --- SAFE DRAW ITEMS ---
         items.forEach(i => {
-            let img = IMAGES[i.type] || IMAGES.pizza;
-            ctx.drawImage(img, i.c*TILE+15, i.r*TILE+15, TILE-30, TILE-30);
+            let img = IMAGES[i.type];
+            if(!img) img = IMAGES.pizza; // Fallback
+            
+            if(img && img.complete) {
+                ctx.drawImage(img, i.c*TILE+15, i.r*TILE+15, TILE-30, TILE-30);
+            } else {
+                // Draw placeholder if image missing
+                ctx.fillStyle = '#ff00ff';
+                ctx.fillRect(i.c*TILE+25, i.r*TILE+25, TILE-50, TILE-50);
+            }
         });
 
+        // --- SAFE DRAW BLOCKERS ---
         blockers.forEach(b => {
              let img = b.type === 'ramsay' ? IMAGES.ramsay : IMAGES.sheldon;
              let shake = Math.random() * 4 - 2;
-             ctx.drawImage(img, b.c*TILE + shake, b.r*TILE + shake, TILE, TILE);
+             if(img && img.complete) {
+                 ctx.drawImage(img, b.c*TILE + shake, b.r*TILE + shake, TILE, TILE);
+             } else {
+                 ctx.fillStyle = 'red';
+                 ctx.fillRect(b.c*TILE, b.r*TILE, TILE, TILE);
+             }
         });
 
         if(husband.active) {
@@ -1021,13 +1038,19 @@
                 let scale = 1.3; 
                 ctx.scale(scale, scale);
                 if(husband.vx < 0) ctx.scale(-1, 1);
+                
                 let cImg = (Math.floor(Date.now()/100)%2===0) ? IMAGES.cupid1 : IMAGES.cupid2;
+                // Safe Check
                 if(!cImg || !cImg.complete) cImg = IMAGES.husband; 
-                ctx.drawImage(cImg, -TILE/2, -TILE/2, TILE, TILE);
+                
+                if(cImg && cImg.complete) ctx.drawImage(cImg, -TILE/2, -TILE/2, TILE, TILE);
+                else { ctx.fillStyle='blue'; ctx.fillRect(-TILE/2, -TILE/2, TILE, TILE); }
             } else {
                 let scale = 1 + Math.sin(Date.now()/200)*0.1;
                 ctx.scale(scale, scale);
-                ctx.drawImage(IMAGES.husband, -TILE/2, -TILE/2, TILE, TILE);
+                
+                if(IMAGES.husband && IMAGES.husband.complete) ctx.drawImage(IMAGES.husband, -TILE/2, -TILE/2, TILE, TILE);
+                else { ctx.fillStyle='blue'; ctx.fillRect(-TILE/2, -TILE/2, TILE, TILE); }
             }
             ctx.restore();
         }
@@ -1041,30 +1064,41 @@
              if(frame === 0) sprite = IMAGES.wife3;
              else sprite = IMAGES.idle;
         }
+        
         if(isInvincible) {
             if(Math.floor(frameCount/5)%2===0) ctx.globalAlpha = 0.4;
             ctx.beginPath(); ctx.arc(0,0, TILE/1.5, 0, Math.PI*2);
             ctx.strokeStyle = "white"; ctx.stroke();
         }
-        ctx.drawImage(sprite, -TILE/2, -TILE/2, TILE, TILE);
+        
+        // SAFE DRAW PLAYER
+        if(sprite && sprite.complete) ctx.drawImage(sprite, -TILE/2, -TILE/2, TILE, TILE);
+        else { ctx.fillStyle='green'; ctx.fillRect(-TILE/2, -TILE/2, TILE, TILE); }
+        
         ctx.restore();
 
         ghosts.forEach(g => {
             if(isInvincible) ctx.globalAlpha = 0.5;
-            ctx.drawImage(IMAGES.parlay, g.x - TILE/2, g.y - TILE/2, TILE, TILE);
+            // SAFE DRAW GHOST
+            if(IMAGES.parlay && IMAGES.parlay.complete) ctx.drawImage(IMAGES.parlay, g.x - TILE/2, g.y - TILE/2, TILE, TILE);
+            else { ctx.fillStyle='white'; ctx.fillRect(g.x-TILE/2, g.y-TILE/2, TILE, TILE); }
             ctx.globalAlpha = 1.0;
         });
 
         popups.forEach((p, idx) => {
-            if(p.opacity > 0 && IMAGES[p.type]) {
+            let pImg = IMAGES[p.type];
+            if(p.opacity > 0 && pImg && pImg.complete) {
                 ctx.save();
                 ctx.globalAlpha = p.opacity;
                 ctx.translate(camera.x + window.innerWidth/2, camera.y + window.innerHeight/2);
                 ctx.scale(p.scale * 3, p.scale * 3); 
-                ctx.drawImage(IMAGES[p.type], -75, -75, 150, 150); 
+                ctx.drawImage(pImg, -75, -75, 150, 150); 
                 ctx.restore();
                 p.scale += 0.05; 
                 p.opacity -= 0.015; 
+            } else if (p.opacity > 0) {
+                 // skip drawing if image missing, but keep logic
+                 p.opacity -= 0.015;
             } else {
                 popups.splice(idx, 1);
             }
@@ -1250,9 +1284,14 @@
 
         let drawItem = (item) => {
              item.x += item.vx;
+             
+             // KICK/PUNCH/STOMP LOGIC
              if(item.type === 'shrimp' && !item.kicked && winAnim.state !== 'RUN_TO_HUG') {
                  if(item.x > winAnim.husbX - 100 && item.x < winAnim.husbX + 50) {
-                     winAnim.state = 'KICKING';
+                     // Check High vs Low
+                     if(item.y < winAnim.groundY) winAnim.state = 'PUNCHING'; // Overhead
+                     else winAnim.state = 'STOMPING'; // Underneath
+                     
                      winAnim.kickTimer = 30; 
                      item.kicked = true;
                      item.vx = 15; item.vy = -15; 
@@ -1271,9 +1310,15 @@
         if(winAnim.state === 'HUGGING') {
             if(IMAGES.hug) wCtx.drawImage(IMAGES.hug, winAnim.husbX - 20, husbY, 160, 160);
         } 
-        else if (winAnim.state === 'KICKING') {
-            wCtx.drawImage(IMAGES.husband, winAnim.husbX + 30, husbY, 150, 150);
-            wCtx.drawImage(IMAGES.wife3, winAnim.wifeX - 20, wifeY, 150, 150);
+        else if (winAnim.state === 'PUNCHING') {
+            // Replaces separate sprites with merged punch
+            if(IMAGES.punch) wCtx.drawImage(IMAGES.punch, winAnim.husbX - 20, husbY, 160, 160);
+            winAnim.kickTimer--;
+            if(winAnim.kickTimer <= 0) winAnim.state = 'HUGGING'; 
+        }
+        else if (winAnim.state === 'STOMPING') {
+            // Replaces separate sprites with merged stomp
+            if(IMAGES.stomp) wCtx.drawImage(IMAGES.stomp, winAnim.husbX - 20, husbY, 160, 160);
             winAnim.kickTimer--;
             if(winAnim.kickTimer <= 0) winAnim.state = 'HUGGING'; 
         }
