@@ -341,8 +341,8 @@
     // --- CONFIGURATION ---
     const TILE = 125; 
     const ANIM_SPEED = 8; 
-    const BLOCKER_DURATION = 5000; // REDUCED TO 5 SECONDS
-    const HUSBAND_SCORE_THRESHOLD = 500; // HUSBAND APPEARS EVERY 500
+    const BLOCKER_DURATION = 5000; 
+    const HUSBAND_SCORE_THRESHOLD = 500; 
 
     // Map: 1=Wall, 0=Food, 2=Box, 9=Empty, 5=GhostSpawn, 'P'=Player
     const BASE_MAP = [
@@ -374,7 +374,7 @@
 
     const IMAGES = {};
     const AUDIO = {};
-    const ASSET_NAMES = ['wife3', 'idle', 'husband', 'parlay', 'ramsay', 'sheldon', 'pizza', 'pasta', 'potato', 'shrimp', 'box', 'hug', 'vegas', 'winner'];
+    const ASSET_NAMES = ['wife3', 'idle', 'husband', 'cupid1', 'cupid2', 'parlay', 'ramsay', 'sheldon', 'pizza', 'pasta', 'potato', 'shrimp', 'box', 'hug', 'vegas', 'winner'];
     const AUDIO_NAMES = ['hangover', 'ramsay', 'bazinga', 'loveyoubumbum', 'chaching', 'endgame', 'splat'];
 
     function loadAssets() {
@@ -410,7 +410,18 @@
     let player = { x:0, y:0, c:0, r:0, animFrame: 0, facingLeft: false };
     let ghosts = [];
     let items = [];
-    let husband = { active: false, x:0, y:0, timer:0, lastScore: 0, vx:0, vy:0 };
+    let popups = []; // For box reveals
+
+    // HUSBAND LOGIC
+    let husband = { 
+        active: false, 
+        x:0, y:0, 
+        timer:0, 
+        lastScore: 0, 
+        vx:0, vy:0,
+        state: 'IDLE' // IDLE, FLYING
+    };
+    
     let gamePaused = false;
     let gameWon = false;
 
@@ -541,7 +552,7 @@
     }
 
     function resetLevel() {
-        items = []; ghosts = []; blockers = [];
+        items = []; ghosts = []; blockers = []; popups = [];
         MAP = JSON.parse(JSON.stringify(BASE_MAP)); 
         
         if(score === 0) stats = { pizza:0, pasta:0, potato:0, box:0, sheldon:0, ramsay:0, hugs:0 };
@@ -619,16 +630,17 @@
         if(keys.Left) intendedDx = -speed;
         if(keys.Right) intendedDx = speed;
 
-        // --- CORNERING ASSIST ---
+        // --- ENHANCED CORNERING ASSIST ---
+        // Increased snap distance from 35 to 48 for forgiving turns
         if(intendedDx === 0 && intendedDy !== 0) {
             let centerX = player.c * TILE + TILE/2;
-            if(Math.abs(player.x - centerX) < 35) { 
+            if(Math.abs(player.x - centerX) < 48) { 
                 player.x = centerX;
             }
         }
         if(intendedDy === 0 && intendedDx !== 0) {
             let centerY = player.r * TILE + TILE/2;
-            if(Math.abs(player.y - centerY) < 35) {
+            if(Math.abs(player.y - centerY) < 48) {
                 player.y = centerY;
             }
         }
@@ -670,32 +682,22 @@
         MAP[r][c] = 8; // Set Wall
         blockers.push({ type: type, c: c, r: r, expires: Date.now() + BLOCKER_DURATION });
         
-        // Teleport if trapped logic would go here if needed
         let neighbors = [
             {c: c+1, r: r}, {c: c-1, r: r}, {c: c, r: r+1}, {c: c, r: r-1}
         ];
-        
         let best = null;
         let minDist = 999999;
-        
         neighbors.forEach(n => {
             if(n.c >= 0 && n.c < COLS && n.r >= 0 && n.r < ROWS) {
                 if(MAP[n.r][n.c] !== 1 && MAP[n.r][n.c] !== 8) {
                       let nx = n.c * TILE + TILE/2;
                       let ny = n.r * TILE + TILE/2;
                       let d = Math.sqrt((player.x - nx)**2 + (player.y - ny)**2);
-                      if(d < minDist) {
-                          minDist = d;
-                          best = {x: nx, y: ny};
-                      }
+                      if(d < minDist) { minDist = d; best = {x: nx, y: ny}; }
                 }
             }
         });
-        
-        if(best) {
-            player.x = best.x;
-            player.y = best.y;
-        }
+        if(best) { player.x = best.x; player.y = best.y; }
     }
 
     function moveGhosts() {
@@ -754,24 +756,34 @@
             }
             else if(item.type === 'box') {
                 let rand = Math.random();
+                let prize = '';
                 if(rand < 0.3) {
-                    // 30% Chance Sheldon (Bad)
+                    // Sheldon
                     stats.sheldon++;
                     if(AUDIO.bazinga) AUDIO.bazinga.play();
                     spawnBlocker('sheldon', item.c, item.r);
-                    items.splice(iIdx, 1);
+                    prize = 'sheldon';
                 } else if (rand < 0.6) {
-                    // 30% Chance Invincibility (Great)
+                    // Good Box
                     score += 500; stats.box++;
-                    items.splice(iIdx, 1);
                     isInvincible = true; 
-                    invincibleTimer = 600; // 10 seconds approx
+                    invincibleTimer = 600; 
                     if(AUDIO.loveyoubumbum) AUDIO.loveyoubumbum.play();
+                    prize = 'pizza'; // Just visual
                 } else {
-                    // 40% Chance Just Points (Good)
+                    // Points
                     score += 500; stats.box++;
-                    items.splice(iIdx, 1);
+                    prize = 'pasta'; // Visual
                 }
+                // TRIGGER 3D POPUP
+                popups.push({
+                    type: prize, 
+                    x: window.innerWidth/2, 
+                    y: window.innerHeight/2, 
+                    scale: 0.1, 
+                    opacity: 1.0
+                });
+                items.splice(iIdx, 1);
             } 
             else {
                 score += item.val;
@@ -799,24 +811,15 @@
         });
 
         if(playerHit) {
-             // 1. Reset Player to Safe Zone
              player.c = 9; player.r = 14;
              player.x = 9 * TILE + TILE/2; 
              player.y = 14 * TILE + TILE/2;
-
-             // 2. Reset ALL Ghosts to Center Spawn
+             
              let spawnX = 9 * TILE + TILE/2;
              let spawnY = 8 * TILE + TILE/2;
-             
-             ghosts.forEach(g => {
-                 g.x = spawnX;
-                 g.y = spawnY;
-                 g.vx = 0;
-                 g.vy = 0;
-             });
+             ghosts.forEach(g => { g.x = spawnX; g.y = spawnY; g.vx = 0; g.vy = 0; });
         }
 
-        // --- WIN CONDITION ---
         if(totalFood <= 0 && !gameWon) {
             startWinnerScreen();
         }
@@ -834,26 +837,32 @@
             husband.x = husband.c * TILE + TILE/2;
             husband.y = husband.r * TILE + TILE/2;
             husband.active = true;
-            husband.timer = 1200; 
-            // Random start velocity
-            husband.vx = (Math.random() > 0.5 ? 2 : -2);
-            husband.vy = (Math.random() > 0.5 ? 2 : -2);
+            husband.timer = 1200; // Total duration
+            husband.state = 'IDLE';
+            husband.vx = 0; husband.vy = 0;
         }
         if(husband.active) {
             husband.timer--;
             
-            // --- MOVEMENT LOGIC ---
-            // Wander freely, bounce off world edges
-            husband.x += husband.vx;
-            husband.y += husband.vy;
-            
-            if(husband.x < 0 || husband.x > WORLD_WIDTH) husband.vx = -husband.vx;
-            if(husband.y < 0 || husband.y > WORLD_HEIGHT) husband.vy = -husband.vy;
-            
-            // Change direction randomly occasionally
-            if(Math.random() < 0.02) {
-                husband.vx = (Math.random() - 0.5) * 6;
-                husband.vy = (Math.random() - 0.5) * 6;
+            // --- CUPID STATE MACHINE ---
+            if(husband.state === 'IDLE') {
+                // Stay still for first 200 frames (approx 3 sec)
+                if(husband.timer < 1000) {
+                     husband.state = 'FLYING';
+                     husband.vx = (Math.random() > 0.5 ? 2 : -2);
+                     husband.vy = (Math.random() > 0.5 ? 2 : -2);
+                }
+            } else if (husband.state === 'FLYING') {
+                // Move and bounce
+                husband.x += husband.vx;
+                husband.y += husband.vy;
+                if(husband.x < 0 || husband.x > WORLD_WIDTH) husband.vx = -husband.vx;
+                if(husband.y < 0 || husband.y > WORLD_HEIGHT) husband.vy = -husband.vy;
+                
+                // Land briefly before disappearing?
+                if(husband.timer < 200) {
+                    husband.state = 'IDLE';
+                }
             }
 
             if(husband.timer <= 0) husband.active = false;
@@ -865,7 +874,6 @@
                 if(AUDIO.loveyoubumbum) AUDIO.loveyoubumbum.play();
                 husband.active = false;
                 
-                // Show Hug Screen, Pause Game
                 gamePaused = true;
                 document.getElementById('hugScreen').style.display = 'flex';
                 
@@ -874,7 +882,7 @@
                     gamePaused = false;
                     isInvincible = true; 
                     invincibleTimer = 600; 
-                }, 3000); // 3 Second Linger
+                }, 3000); 
             }
         } else {
             if(score % HUSBAND_SCORE_THRESHOLD !== 0) husband.lastScore = 0;
@@ -931,10 +939,24 @@
 
         if(husband.active) {
             ctx.save();
-            let scale = 1 + Math.sin(Date.now()/200)*0.1;
             ctx.translate(husband.x, husband.y);
-            ctx.scale(scale, scale);
-            ctx.drawImage(IMAGES.husband, -TILE/2, -TILE/2, TILE, TILE);
+            
+            if(husband.state === 'FLYING') {
+                // Cupid Animation
+                let scale = 1.2; // Cupid is slightly bigger?
+                ctx.scale(scale, scale);
+                // Flip if moving left
+                if(husband.vx < 0) ctx.scale(-1, 1);
+                
+                let cImg = (Math.floor(Date.now()/100)%2===0) ? IMAGES.cupid1 : IMAGES.cupid2;
+                if(!cImg) cImg = IMAGES.husband; // Fallback
+                ctx.drawImage(cImg, -TILE/2, -TILE/2, TILE, TILE);
+            } else {
+                // Idle Husband
+                let scale = 1 + Math.sin(Date.now()/200)*0.1;
+                ctx.scale(scale, scale);
+                ctx.drawImage(IMAGES.husband, -TILE/2, -TILE/2, TILE, TILE);
+            }
             ctx.restore();
         }
 
@@ -964,6 +986,25 @@
         });
 
         ctx.restore();
+        
+        // --- DRAW POPUPS (UI LAYER) ---
+        // These are drawn over everything, no camera translation
+        popups.forEach((p, idx) => {
+            if(p.opacity > 0 && IMAGES[p.type]) {
+                ctx.save();
+                ctx.globalAlpha = p.opacity;
+                ctx.translate(p.x, p.y);
+                ctx.scale(p.scale, p.scale);
+                ctx.drawImage(IMAGES[p.type], -100, -100, 200, 200); // Draw center
+                ctx.restore();
+                
+                p.scale += 0.05; // Zoom in
+                p.opacity -= 0.02; // Fade out
+            } else {
+                popups.splice(idx, 1);
+            }
+        });
+
         document.getElementById('scoreVal').innerText = score;
     }
 
@@ -980,7 +1021,7 @@
             }
         }
         
-        // Draw Gift Boxes AND FOOD on Minimap (ALWAYS)
+        // Draw Gift Boxes AND ALL FOOD on Minimap
         items.forEach(i => {
             if(i.type === 'box') {
                  miniCtx.fillStyle = "#FFD700"; // Gold
@@ -1015,7 +1056,8 @@
         
         winAnim.groundY = wc.height * 0.85; 
         winAnim.wifeX = -200;
-        winAnim.husbX = wc.width * 0.8; 
+        // MOVED LEFT: Was 0.8, now 0.55 (Center-Right)
+        winAnim.husbX = wc.width * 0.55; 
         winAnim.state = 'RUN_TO_HUG';
         winAnim.items = [];
         winAnim.spawnTimer = 0;
@@ -1036,23 +1078,18 @@
 
         // 1. Wife Running Logic
         if(winAnim.state === 'RUN_TO_HUG') {
-            winAnim.wifeX += 6; // Speed up wife
-            // Check if she reached husband. 
-            // Husband is at winAnim.husbX. Wife is at winAnim.wifeX. 
-            // Sprites are approx 150px wide now.
+            winAnim.wifeX += 6; 
             if(winAnim.wifeX >= winAnim.husbX - 80) {
                 winAnim.state = 'HUGGING';
             }
         }
 
-        // 2. Item Spawning Logic (Sporadic, Top and Bottom lanes)
+        // 2. Item Spawning Logic
         winAnim.spawnTimer++;
         if(winAnim.spawnTimer > 60 && Math.random() > 0.5) {
             winAnim.spawnTimer = 0;
             const creditTypes = ['pizza', 'pasta', 'potato', 'box', 'sheldon', 'ramsay', 'parlay', 'shrimp'];
             let type = creditTypes[Math.floor(Math.random()*creditTypes.length)];
-            
-            // Randomly choose "Above" (Background) or "Below" (Foreground)
             let isForeground = Math.random() > 0.5;
             let spawnY = isForeground ? winAnim.groundY + 20 : winAnim.groundY - 140; 
             
@@ -1060,68 +1097,55 @@
                 type: type,
                 x: -100,
                 y: spawnY,
-                vx: 4 + Math.random() * 2, // Varied speed
+                vx: 4 + Math.random() * 2, 
                 kicked: false,
                 vy: 0
             });
         }
 
         // 3. Move & Draw Items
-        // We draw Background items first, then couple, then Foreground items
         let bgItems = winAnim.items.filter(i => i.y < winAnim.groundY);
         let fgItems = winAnim.items.filter(i => i.y >= winAnim.groundY);
 
         let drawItem = (item) => {
-             // Logic
              item.x += item.vx;
              
              // KICK LOGIC
              if(item.type === 'shrimp' && !item.kicked && winAnim.state !== 'RUN_TO_HUG') {
-                 // Check distance to husband
                  if(item.x > winAnim.husbX - 100 && item.x < winAnim.husbX + 50) {
-                     // TRIGGER KICK
                      winAnim.state = 'KICKING';
-                     winAnim.kickTimer = 30; // 30 frames of kicking
+                     winAnim.kickTimer = 30; 
                      item.kicked = true;
-                     item.vx = 15; // Kick forward fast
-                     item.vy = -15; // Kick up
-                     // Play splat?
+                     item.vx = 15; 
+                     item.vy = -15; 
                      if(AUDIO.splat) AUDIO.splat.play();
                  }
              }
-
              if(item.kicked) {
                  item.y += item.vy;
-                 item.vy += 1; // Gravity
+                 item.vy += 1; 
              }
-             
-             // Draw (Scaled up 25% -> 75x75)
              if(IMAGES[item.type]) wCtx.drawImage(IMAGES[item.type], item.x, item.y, 75, 75);
         };
 
         bgItems.forEach(drawItem);
 
-        // 4. Draw Couple (Scaled up 50% -> 150x150)
+        // 4. Draw Couple
         let husbY = winAnim.groundY - 150;
         let wifeY = winAnim.groundY - 150;
         
         if(winAnim.state === 'HUGGING') {
-            // Merged Sprite
             if(IMAGES.hug) wCtx.drawImage(IMAGES.hug, winAnim.husbX - 20, husbY, 160, 160);
         } 
         else if (winAnim.state === 'KICKING') {
-            // Husband Kicking Pose (Slide forward slightly)
             wCtx.drawImage(IMAGES.husband, winAnim.husbX + 30, husbY, 150, 150);
-            // Wife stands back
             wCtx.drawImage(IMAGES.wife3, winAnim.wifeX - 20, wifeY, 150, 150);
             
             winAnim.kickTimer--;
-            if(winAnim.kickTimer <= 0) winAnim.state = 'HUGGING'; // Go back to hugging
+            if(winAnim.kickTimer <= 0) winAnim.state = 'HUGGING'; 
         }
         else {
-            // Running / Standing
             wCtx.drawImage(IMAGES.husband, winAnim.husbX, husbY, 150, 150);
-            
             let wImg = (Math.floor(Date.now()/100)%2===0) ? IMAGES.wife3 : IMAGES.idle;
             wCtx.drawImage(wImg, winAnim.wifeX, wifeY, 150, 150);
         }
