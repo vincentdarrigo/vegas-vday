@@ -290,7 +290,6 @@
                 <div class="stat-box">SCORE: <span id="scoreVal">0</span></div>
                 <div class="stat-box" style="color: #0ff;">FOOD LEFT: <span id="foodVal">0</span></div>
             </div>
-            <div class="stat-box" style="color: #f0f;">LEVEL: <span id="levelVal">1</span></div>
         </div>
         
         <button id="endGameBtn" onclick="gameOver()">END GAME</button>
@@ -548,7 +547,7 @@
 
     function startGame(lvl) {
         currentLevel = lvl;
-        document.getElementById('levelVal').innerText = currentLevel;
+        // removed levelVal check
         document.getElementById('introScreen').style.display = 'none';
         document.getElementById('gameScreen').style.display = 'block';
         document.getElementById('winnerScreen').style.display = 'none';
@@ -600,16 +599,14 @@
         items = []; ghosts = []; blockers = []; popups = [];
         MAP = JSON.parse(JSON.stringify(BASE_MAP)); 
         
-        // Reset score only on Level 1
         if(currentLevel === 1) {
             score = 0;
             stats = { pizza:0, pasta:0, potato:0, box:0, sheldon:0, ramsay:0, hugs:0 };
         }
         totalFood = 0;
         
-        // 1. Prepare Box Rewards Deck (Shuffle)
+        // 1. Box Rewards Deck
         let rewardDeck = ['pizza', 'pasta', 'potato', 'shrimp'];
-        // Fill deck with more random items
         for(let i=0; i<10; i++) rewardDeck.push(['pizza','pasta','potato','shrimp'][Math.floor(Math.random()*4)]);
         rewardDeck.sort(() => Math.random() - 0.5);
 
@@ -619,36 +616,50 @@
                 let x = c*TILE + TILE/2;
                 let y = r*TILE + TILE/2;
                 
+                // Original map items
                 if(cell === 0) {
-                    // Randomly convert 5% of food to Mystery Boxes
+                    // Randomly decide: Box or Food
                     if(Math.random() < 0.05) {
-                        cell = 2; // Treat as box now
+                        // It becomes a box
+                        let reward = rewardDeck.length > 0 ? rewardDeck.pop() : 'pizza';
+                        items.push({c, r, type:'box', val:0, rewardType: reward});
                     } else {
-                        if(Math.random() < 0.15) items.push({c, r, type: 'shrimp', val:0});
-                        else {
+                        // Food Logic
+                        if(Math.random() < 0.15) {
+                            items.push({c, r, type: 'shrimp', val:0});
+                        } else {
                             let foodType = Math.random() > 0.6 ? 'pizza' : (Math.random() > 0.5 ? 'pasta' : 'potato');
                             items.push({c, r, type: foodType, val:100});
                             totalFood++;
                         }
+                        // Slots logic
                         if(Math.random() < 0.03) items.push({c,r, type:'slots', val:0});
                     }
                 }
-                
-                // BOX LOGIC (Includes converted cells)
-                if(cell === 2) {
+                else if(cell === 2) {
+                    // Original fixed boxes
                     let reward = rewardDeck.length > 0 ? rewardDeck.pop() : 'pizza';
                     items.push({c, r, type:'box', val:0, rewardType: reward});
                 }
                 
-                if(cell === 'P') { player.x = x; player.y = y; player.c = c; player.r = r; MAP[r][c] = 0; }
+                if(cell === 'P') { 
+                    player.x = x; player.y = y; player.c = c; player.r = r; 
+                    MAP[r][c] = 0; // Clear start pos
+                }
                 if(cell === 5) {
                     for(let i=0; i<4; i++) ghosts.push({ x:x, y:y, vx:0, vy:0, speed:parlaySpeedBase });
                 }
             }
         }
         
+        // Safety: Ensure Slot Machine exists
         if(!items.some(i => i.type === 'slots')) {
              items.push({c:1, r:1, type:'slots', val:0});
+        }
+        // Safety: Ensure at least one food exists (prevents instant win)
+        if(totalFood === 0) {
+             items.push({c:2, r:2, type:'pizza', val:100});
+             totalFood = 1;
         }
     }
 
