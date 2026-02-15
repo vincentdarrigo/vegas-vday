@@ -19,7 +19,7 @@
         }
 
         /* --- SCREENS --- */
-        #startScreen, #introScreen, #gameScreen, #gameOverScreen {
+        #startScreen, #introScreen, #gameScreen, #gameOverScreen, #winnerScreen, #hugScreen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
         }
 
@@ -155,6 +155,43 @@
         /* CANVAS */
         #gameCanvas { display: block; background: #000; touch-action: none; }
 
+        /* --- HUG SCREEN --- */
+        #hugScreen {
+            display: none;
+            background: black;
+            z-index: 250;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #hugImage {
+            max-width: 90%;
+            max-height: 80%;
+            border: 5px solid #ff00ff;
+            box-shadow: 0 0 50px #ff00ff;
+            animation: pulseHug 1s infinite;
+        }
+        @keyframes pulseHug { 0%{transform:scale(1);} 50%{transform:scale(1.05);} 100%{transform:scale(1);} }
+
+        /* --- WINNER SCREEN --- */
+        #winnerScreen {
+            display: none;
+            background: black;
+            z-index: 200;
+        }
+        #winnerCanvas {
+            display: block; width: 100%; height: 100%;
+        }
+        #winnerOverlay {
+            position: absolute; top: 10%; width: 100%; text-align: center;
+            text-shadow: 2px 2px 4px #000;
+        }
+        .winner-title {
+            font-size: 40px; color: #ffd700; 
+            text-shadow: 0 0 20px #ff0000;
+            margin-bottom: 10px;
+            animation: bounce 1s infinite;
+        }
+        @keyframes bounce { 0%, 100% {transform:translateY(0);} 50% {transform:translateY(-10px);} }
+
         /* --- GAME OVER / RECEIPT --- */
         #receiptContainer {
             position: absolute; 
@@ -221,6 +258,10 @@
         <button style="position: absolute; bottom: 30px; right: 30px; z-index:95;" onclick="startGame()">SKIP >></button>
     </div>
 
+    <div id="hugScreen" style="display:none;">
+        <img id="hugImage" src="hug.png" alt="HUG!">
+    </div>
+
     <div id="gameScreen">
         <div id="hud">
             <div>
@@ -243,6 +284,14 @@
         </div>
 
         <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <div id="winnerScreen">
+        <div id="winnerOverlay">
+            <div class="winner-title">CONGRATULATIONS,<br>YOU DID IT!</div>
+            <button onclick="gameOver()">View Receipt</button>
+        </div>
+        <canvas id="winnerCanvas"></canvas>
     </div>
 
     <div id="gameOverScreen">
@@ -292,7 +341,7 @@
     // --- CONFIGURATION ---
     const TILE = 125; 
     const ANIM_SPEED = 8; 
-    const BLOCKER_DURATION = 10000; // REDUCED TO 10 SECONDS
+    const BLOCKER_DURATION = 10000; 
 
     // Map: 1=Wall, 0=Food, 2=Box, 9=Empty, 5=GhostSpawn, 'P'=Player
     const BASE_MAP = [
@@ -324,7 +373,7 @@
 
     const IMAGES = {};
     const AUDIO = {};
-    const ASSET_NAMES = ['wife3', 'idle', 'husband', 'parlay', 'ramsay', 'sheldon', 'pizza', 'pasta', 'potato', 'shrimp', 'box', 'hug', 'vegas'];
+    const ASSET_NAMES = ['wife3', 'idle', 'husband', 'parlay', 'ramsay', 'sheldon', 'pizza', 'pasta', 'potato', 'shrimp', 'box', 'hug', 'vegas', 'winner'];
     const AUDIO_NAMES = ['hangover', 'ramsay', 'bazinga', 'loveyoubumbum', 'chaching', 'endgame'];
 
     function loadAssets() {
@@ -360,6 +409,18 @@
     let ghosts = [];
     let items = [];
     let husband = { active: false, x:0, y:0, timer:0, lastScore: 0 };
+    let gamePaused = false;
+    let gameWon = false;
+
+    // Winner Animation Vars
+    let winAnim = {
+        wifeX: -100,
+        husbX: 0,
+        groundY: 0,
+        credits: [],
+        creditTimer: 0,
+        state: 'RUNNING' // RUNNING, HUGGING
+    };
 
     window.onload = function() {
         loadAssets();
@@ -446,6 +507,7 @@
 
     // New Function to handle tapping shrimp
     function handleCanvasTap(e) {
+        if(gamePaused || gameWon) return;
         e.preventDefault();
         let cx, cy;
         if(e.type === 'touchstart') {
@@ -509,6 +571,10 @@
 
     function update() {
         if(document.getElementById('gameScreen').style.display === 'none') return;
+        if(gamePaused) {
+            gameLoop = requestAnimationFrame(update);
+            return;
+        }
 
         if(isInvincible) {
             invincibleTimer--;
@@ -526,7 +592,8 @@
         
         document.getElementById('foodVal').innerText = totalFood;
         frameCount++;
-        gameLoop = requestAnimationFrame(update);
+        
+        if(!gameWon) gameLoop = requestAnimationFrame(update);
     }
 
     function updateBlockers() {
@@ -550,15 +617,12 @@
         if(keys.Right) intendedDx = speed;
 
         // --- CORNERING ASSIST ---
-        // If moving Horizontal but wants Vertical
         if(intendedDx === 0 && intendedDy !== 0) {
             let centerX = player.c * TILE + TILE/2;
-            // If we are close to center, SNAP to center so we can turn
             if(Math.abs(player.x - centerX) < 35) { 
                 player.x = centerX;
             }
         }
-        // If moving Vertical but wants Horizontal
         if(intendedDy === 0 && intendedDx !== 0) {
             let centerY = player.r * TILE + TILE/2;
             if(Math.abs(player.y - centerY) < 35) {
@@ -566,7 +630,6 @@
             }
         }
 
-        // Apply movement logic (diagonal clamp)
         let dx = intendedDx;
         let dy = intendedDy;
         if(dx !== 0 && dy !== 0) { dx *= 0.707; dy *= 0.707; }
@@ -748,6 +811,11 @@
                  g.vy = 0;
              });
         }
+
+        // --- WIN CONDITION ---
+        if(totalFood <= 0 && !gameWon) {
+            startWinnerScreen();
+        }
     }
 
     function handleHusband() {
@@ -769,10 +837,21 @@
             if(husband.timer <= 0) husband.active = false;
             let d = Math.sqrt((player.x-husband.x)**2 + (player.y-husband.y)**2);
             if(d < TILE) {
+                // CAUGHT HUSBAND
                 stats.hugs++;
                 if(AUDIO.loveyoubumbum) AUDIO.loveyoubumbum.play();
-                isInvincible = true; invincibleTimer = 600; 
                 husband.active = false;
+                
+                // Show Hug Screen, Pause Game
+                gamePaused = true;
+                document.getElementById('hugScreen').style.display = 'flex';
+                
+                setTimeout(() => {
+                    document.getElementById('hugScreen').style.display = 'none';
+                    gamePaused = false;
+                    isInvincible = true; 
+                    invincibleTimer = 600; 
+                }, 3000); // 3 Second Linger
             }
         } else {
             if(score % 1500 !== 0) husband.lastScore = 0;
@@ -883,6 +962,10 @@
         items.forEach(i => {
             if(i.type === 'box') {
                  miniCtx.fillRect(i.c*TILE*scaleX, i.r*TILE*scaleY, TILE*scaleX, TILE*scaleY);
+            } else if (totalFood < 20 && i.type !== 'shrimp') {
+                // REVEAL FOOD WHEN LOW
+                miniCtx.fillStyle = "#0ff"; // Cyan
+                miniCtx.fillRect(i.c*TILE*scaleX, i.r*TILE*scaleY, 3, 3);
             }
         });
 
@@ -896,9 +979,110 @@
         }
     }
 
+    // --- WINNER LOGIC ---
+    function startWinnerScreen() {
+        gameWon = true;
+        document.getElementById('gameScreen').style.display = 'none';
+        document.getElementById('winnerScreen').style.display = 'block';
+        
+        // Setup Animation Vars
+        let wc = document.getElementById('winnerCanvas');
+        wc.width = window.innerWidth;
+        wc.height = window.innerHeight;
+        
+        winAnim.groundY = wc.height * 0.85; // Lower quarter
+        winAnim.wifeX = -100;
+        winAnim.husbX = wc.width * 0.8; 
+        winAnim.state = 'RUNNING';
+        winAnim.credits = [];
+        
+        // Populate Credits Parade
+        const creditTypes = ['pizza', 'pasta', 'potato', 'box', 'sheldon', 'ramsay', 'parlay', 'shrimp', 'pizza', 'pasta'];
+        for(let i=0; i<creditTypes.length; i++) {
+            winAnim.credits.push({
+                type: creditTypes[i],
+                x: -200 - (i * 150), // Spaced out behind wife
+                y: winAnim.groundY - 50,
+                kicked: false
+            });
+        }
+
+        requestAnimationFrame(updateWinnerAnim);
+    }
+
+    function updateWinnerAnim() {
+        if(!gameWon) return;
+        let wc = document.getElementById('winnerCanvas');
+        let wCtx = wc.getContext('2d');
+        
+        // Clear & Draw BG
+        wCtx.clearRect(0, 0, wc.width, wc.height);
+        if(IMAGES.winner) {
+            wCtx.drawImage(IMAGES.winner, 0, 0, wc.width, wc.height);
+        }
+
+        // Logic
+        if(winAnim.state === 'RUNNING') {
+            winAnim.wifeX += 5;
+            if(winAnim.wifeX >= winAnim.husbX - 80) {
+                winAnim.state = 'HUGGING';
+            }
+        }
+
+        // Draw Husband
+        let husbY = winAnim.groundY - 100;
+        let wifeY = winAnim.groundY - 100;
+        
+        // Draw Credits
+        winAnim.credits.forEach(c => {
+            c.x += 6; // Move right
+            if(c.x > wc.width) c.x = -100; // Loop? or just run off. Let's run off.
+
+            let cy = c.y;
+            // Kick Logic
+            if(c.type === 'shrimp' && !c.kicked) {
+                if(c.x > winAnim.husbX - 50 && c.x < winAnim.husbX + 100) {
+                    // Kick!
+                    c.kicked = true;
+                    c.vy = 10; // Fall down
+                }
+            }
+            if(c.kicked) {
+                c.y += c.vy;
+                c.vy += 1; // Gravity
+            }
+
+            if(IMAGES[c.type]) wCtx.drawImage(IMAGES[c.type], c.x, c.y, 60, 60);
+        });
+
+        // Draw Husband
+        let hImg = IMAGES.husband;
+        // Kick visual for husband too?
+        let hOffY = 0;
+        if(winAnim.credits.some(c => c.type === 'shrimp' && c.kicked && c.y < wc.height)) {
+             hOffY = 30; // Slide down
+        }
+        wCtx.drawImage(hImg, winAnim.husbX, husbY + hOffY, 100, 100);
+
+        // Draw Wife
+        let wImg = (Math.floor(Date.now()/100)%2===0) ? IMAGES.wife3 : IMAGES.idle;
+        if(winAnim.state === 'HUGGING') wImg = IMAGES.wife3;
+        
+        wCtx.drawImage(wImg, winAnim.wifeX, wifeY + hOffY, 100, 100);
+
+        if(winAnim.state === 'HUGGING') {
+            // Draw Heart
+             wCtx.font = "50px Arial";
+             wCtx.fillText("❤️", winAnim.husbX - 20, husbY - 20);
+        }
+
+        requestAnimationFrame(updateWinnerAnim);
+    }
+
     function gameOver() {
         saveScore(score);
         cancelAnimationFrame(gameLoop);
+        gameWon = false; // Stop winner anim
 
         if(AUDIO.hangover) AUDIO.hangover.pause();
         if(AUDIO.endgame) {
@@ -906,6 +1090,7 @@
             AUDIO.endgame.play();
         }
 
+        document.getElementById('winnerScreen').style.display = 'none'; // Hide winner if open
         document.getElementById('gameScreen').style.display = 'none';
         document.getElementById('gameOverScreen').style.display = 'block';
         
@@ -924,7 +1109,7 @@
         setTimeout(() => {
             document.getElementById('receiptContainer').style.bottom = "50%";
             document.getElementById('receiptContainer').style.transform = "translate(-50%, 50%)";
-        }, 25000);
+        }, 2500); // Faster reveal
     }
 
     function skipOutro() {
