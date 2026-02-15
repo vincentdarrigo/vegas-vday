@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vegas Valentine</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
+
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #000;
+            font-family: 'Courier Prime', monospace;
+            color: white;
+            touch-action: none; 
+            user-select: none;
+        }
+
+        /* --- SCREENS --- */
+        #startScreen, #introScreen, #gameScreen, #gameOverScreen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        }
+
+        /* --- START SCREEN --- */
+        #startScreen {
+            background: url('gameboard.png') no-repeat center center;
+            background-size: cover; 
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 100;
+        }
+        
+        .start-overlay {
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 20px;
+            border: 4px solid #ff00ff;
+            box-shadow: 0 0 30px #ff00ff;
+            text-align: center;
+            max-width: 90%;
+        }
+
+        .title {
+            font-size: 50px; color: #ff00ff; text-shadow: 0 0 15px #ff00ff;
+            margin-bottom: 20px; text-transform: uppercase;
+            animation: pulseTitle 2s infinite;
+        }
+        @keyframes pulseTitle { 50% { text-shadow: 0 0 30px #ff00ff; transform: scale(1.02); } }
+
+        button {
+            background: #ff00ff; color: white; font-size: 24px; padding: 15px 40px;
+            border: 3px solid white; border-radius: 40px; cursor: pointer;
+            box-shadow: 0 0 15px #ff00ff; font-weight: bold; margin-top: 15px;
+            text-transform: uppercase;
+            font-family: 'Courier Prime', monospace;
+        }
+        button:active { transform: scale(0.95); background: #fff; color: #ff00ff; }
+
+        /* --- CRAWL TEXT --- */
+        #introScreen, #gameOverScreen {
+            display: none; background: black; z-index: 90;
+            perspective: 500px; overflow: hidden;
+        }
+
+        .crawl-text {
+            position: absolute; top: 100%; left: 5%; width: 90%;
+            font-weight: bold; text-align: center; 
+            transform-origin: 50% 100%;
+            transform: rotateX(25deg);
+            line-height: 1.5;
+        }
+        
+        .intro-crawl {
+            color: #ffd700; font-size: 24px; text-shadow: 0 0 10px #ff0000;
+            animation: crawlAnim 25s linear forwards;
+        }
+        
+        .outro-crawl {
+            color: #ff69b4; 
+            font-size: 36px; 
+            text-shadow: 0 0 10px #ff00ff;
+            animation: crawlAnim 25s linear forwards; 
+            line-height: 1.8;
+        }
+
+        @keyframes crawlAnim { 
+            0% { top: 110%; opacity: 1; } 
+            95% { opacity: 1; } 
+            100% { top: -200%; opacity: 0; } 
+        }
+
+        /* --- GAME SCREEN --- */
+        #gameScreen {
+            display: none;
+            background: #000; 
+        }
+
+        /* HUD */
+        #hud {
+            position: absolute; top: 0; left: 0; width: 100%;
+            padding: 10px 20px; box-sizing: border-box;
+            display: flex; justify-content: space-between; align-items: flex-start;
+            font-size: 24px; font-weight: bold; color: #fff;
+            text-shadow: 2px 2px 0 #000; pointer-events: none; z-index: 10;
+        }
+        .stat-box { background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 8px; border: 1px solid #ff00ff; margin-bottom: 5px; }
+
+        /* END GAME BTN */
+        #endGameBtn {
+            position: absolute; top: 10px; right: 20px;
+            background: #ff0000; border: 2px solid white;
+            font-size: 16px; padding: 10px 15px;
+            z-index: 100; pointer-events: auto;
+            cursor: pointer;
+            box-shadow: 0 0 10px red;
+        }
+
+        /* MINIMAP */
+        #minimapContainer {
+            position: absolute; bottom: 20px; left: 20px;
+            border: 3px solid #ff00ff;
+            background: rgba(0, 0, 0, 0.9);
+            box-shadow: 0 0 10px #ff00ff;
+            z-index: 100;
+            border-radius: 5px;
+            display: flex;
+        }
+        #minimap { width: 150px; height: 165px; display: block; }
+
+        /* D-PAD */
+        #dpad {
+            position: absolute; bottom: 20px; right: 20px;
+            width: 180px; height: 180px;
+            z-index: 100;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            gap: 5px;
+        }
+        .d-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 0, 255, 0.5);
+            border-radius: 10px;
+            touch-action: manipulation;
+        }
+        .d-btn:active { background: rgba(255, 0, 255, 0.6); }
+        #btn-up { grid-column: 2; grid-row: 1; }
+        #btn-left { grid-column: 1; grid-row: 2; }
+        #btn-right { grid-column: 3; grid-row: 2; }
+        #btn-down { grid-column: 2; grid-row: 3; }
+
+        /* CANVAS */
+        #gameCanvas { display: block; background: #000; }
+
+        /* --- GAME OVER / RECEIPT --- */
+        #receiptContainer {
+            position: absolute; 
+            bottom: -150%; 
+            left: 50%; 
+            transform: translateX(-50%);
+            width: 320px;
+            text-align: center;
+            transition: bottom 2s cubic-bezier(0.19, 1, 0.22, 1);
+            z-index: 210;
+        }
+
+        .stats-receipt {
+            background: white; color: black;
+            font-family: 'Courier New', monospace;
+            padding: 20px; 
+            border-bottom: 5px dashed black;
+            text-align: left;
+            transform: rotate(-2deg);
+            box-shadow: 0 0 50px rgba(255,255,255,0.3);
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .receipt-line { display: flex; justify-content: space-between; margin-bottom: 5px; }
+
+    </style>
+</head>
+<body>
+
+    <div id="startScreen">
+        <div class="start-overlay">
+            <h1 class="title">Vegas Valentine</h1>
+            
+            <label>Parlay Intensity: <span id="speedDisplay">Normal</span></label><br>
+            <input type="range" id="speedInput" min="1" max="3" value="2" style="width: 200px; margin: 10px 0;">
+
+            <div style="margin-top: 20px;">
+                <h3>Top Scores</h3>
+                <div id="highScores" style="font-size: 16px; color: #ffd700;">Loading...</div>
+            </div>
+
+            <button onclick="startIntro()">Start Run</button>
+        </div>
+    </div>
+
+    <div id="introScreen">
+        <div class="crawl-text intro-crawl">
+            EPISODE I<br>THE VEGAS STRIP<br><br>
+            Your mission is simple:<br><br>
+            1. Find your bumbum as many times as you can.<br><br>
+            2. Eat ALL the delicious food to clear the board.<br><br>
+            WATCH OUT FOR PARLAYS:<br>
+            They will cost you bigtime, don't get burned by 3 or it's game over!<br><br>
+            BEWARE SEAFOOD - Eating it makes everyone mad around you!<br>Gift boxes contain more food but watch out for pranks!<br><br>
+            Clear the board of pizza, pasta/meatballs, and steak/potatoes while hugging your bumbum as many times as possible when you see him appear!<br><br>
+            Good Luck Bbbbyyyykins!
+        </div>
+        <button style="position: absolute; bottom: 30px; right: 30px; z-index:95;" onclick="startGame()">SKIP >></button>
+    </div>
+
+    <div id="gameScreen">
+        <div id="hud">
+            <div>
+                <div class="stat-box">SCORE: <span id="scoreVal">0</span></div>
+                <div class="stat-box" style="color: #0ff;">FOOD LEFT: <span id="foodVal">0</span></div>
+            </div>
+            <div class="lives" id="livesVal"></div>
+        </div>
+        
+        <button id="endGameBtn" onclick="gameOver()">END GAME</button>
+        
+        <div id="minimapContainer">
+            <canvas id="minimap" width="200" height="220"></canvas>
+        </div>
+
+        <div id="dpad">
+            <div class="d-btn" id="btn-up"></div>
+            <div class="d-btn" id="btn-left"></div>
+            <div class="d-btn" id="btn-right"></div>
+            <div class="d-btn" id="btn-down"></div>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <div id="gameOverScreen">
+        
+        <div class="crawl-text outro-crawl" id="outroText">
+            Happy Valentine's Day<br>bbbbyyyy<br><br>
+            I love you bumbum<br>
+            ❤️ 💘 💝 💖<br><br>
+            Sowwy that we couldn't be<br>
+            in Vegas for this<br>
+            Valentine's Day...<br><br>
+            But I hope you enjoyed<br>
+            a two dimensional<br>
+            practice run!<br>
+            💰 🎲 🎰 🍕<br><br>
+            I love you oodles<br>
+            and bunches<br>
+            😍
+        </div>
+
+        <div id="receiptContainer">
+            <div class="stats-receipt">
+                <h3 style="text-align: center; margin-top:0;">VEGAS RECEIPT</h3>
+                <hr>
+                <div class="receipt-line"><span>Pizza Eaten:</span> <span id="statPizza">0</span></div>
+                <div class="receipt-line"><span>Pasta Eaten:</span> <span id="statPasta">0</span></div>
+                <div class="receipt-line"><span>Potatoes:</span> <span id="statPotato">0</span></div>
+                <div class="receipt-line"><span>Good Boxes:</span> <span id="statBox">0</span></div>
+                <hr>
+                <div class="receipt-line"><span>Bazingas!:</span> <span id="statSheldon">0</span></div>
+                <div class="receipt-line"><span>Ramsay Yells:</span> <span id="statRamsay">0</span></div>
+                <hr>
+                <div class="receipt-line" style="font-weight:bold; font-size:20px;"><span>HUGS (BUMBUM):</span> <span id="statHugs">0</span></div>
+                <hr>
+                <div style="font-size: 22px; text-align: center; margin-top: 10px;">
+                    TOTAL SCORE<br>
+                    <span id="finalScore" style="font-weight:bold;">0</span>
+                </div>
+            </div>
+            <button onclick="location.reload()">PLAY AGAIN</button>
+        </div>
+    </div>
+
+<script>
+    // --- CONFIGURATION ---
+    const TILE = 125; 
+    const ANIM_SPEED = 8; 
+    const BLOCKER_DURATION = 60000; // 60 Seconds Blocking
+
+    // Map: 1=Wall, 0=Food, 2=Box, 9=Empty, 5=GhostSpawn, 'P'=Player
+    const BASE_MAP = [
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+        [1,2,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,2,1],
+        [1,0,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,0,1],
+        [1,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,1],
+        [1,1,1,1,0,1,1,1,9,1,9,1,1,1,0,1,1,1,1],
+        [1,1,1,1,0,1,9,9,9,5,9,9,9,1,0,1,1,1,1], 
+        [1,1,1,1,0,1,9,1,1,9,1,1,9,1,0,1,1,1,1],
+        [1,0,0,0,0,0,0,1,9,9,9,1,0,0,0,0,0,0,1],
+        [1,0,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,0,1],
+        [1,0,0,1,0,1,0,0,0,1,0,0,0,1,0,1,0,0,1],
+        [1,1,0,1,0,1,0,1,1,1,1,1,0,1,0,1,0,1,1],
+        [1,0,0,0,0,0,0,0,0,'P',0,0,0,0,0,0,0,0,1],
+        [1,0,1,1,1,1,1,1,0,1,0,1,1,1,1,1,1,0,1],
+        [1,2,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,2,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+    ];
+
+    let MAP = []; 
+    const ROWS = BASE_MAP.length;
+    const COLS = BASE_MAP[0].length;
+    const WORLD_WIDTH = COLS * TILE;
+    const WORLD_HEIGHT = ROWS * TILE;
+
+    const IMAGES = {};
+    const AUDIO = {};
+    const ASSET_NAMES = ['wife3', 'idle', 'husband', 'parlay', 'ramsay', 'sheldon', 'pizza', 'pasta', 'potato', 'shrimp', 'box', 'hug', 'vegas'];
+    const AUDIO_NAMES = ['hangover', 'ramsay', 'bazinga', 'loveyoubumbum', 'chaching', 'endgame'];
+
+    function loadAssets() {
+        ASSET_NAMES.forEach(name => {
+            const img = new Image();
+            img.src = name + '.png';
+            IMAGES[name] = img;
+        });
+        AUDIO_NAMES.forEach(name => {
+            AUDIO[name] = new Audio(name + '.mp3');
+        });
+        if(AUDIO.hangover) {
+            AUDIO.hangover.loop = true;
+            AUDIO.hangover.volume = 0.4;
+        }
+        if(AUDIO.chaching) AUDIO.chaching.volume = 0.6;
+        if(AUDIO.endgame) AUDIO.endgame.loop = true; 
+    }
+
+    let canvas, ctx, miniCanvas, miniCtx;
+    let gameLoop;
+    let score = 0;
+    let lives = 3;
+    let frameCount = 0;
+    let parlaySpeedBase = 3; 
+    let camera = { x: 0, y: 0 };
+    let isInvincible = false;
+    let invincibleTimer = 0;
+    let totalFood = 0;
+    let stats = { pizza:0, pasta:0, potato:0, box:0, sheldon:0, ramsay:0, hugs:0 };
+    let blockers = []; 
+    let keys = { Up: false, Down: false, Left: false, Right: false };
+    let player = { x:0, y:0, c:0, r:0, animFrame: 0, facingLeft: false };
+    let ghosts = [];
+    let items = [];
+    let husband = { active: false, x:0, y:0, timer:0, lastScore: 0 };
+
+    window.onload = function() {
+        loadAssets();
+        loadScores();
+        setupTouchBtn('btn-up', 'Up');
+        setupTouchBtn('btn-down', 'Down');
+        setupTouchBtn('btn-left', 'Left');
+        setupTouchBtn('btn-right', 'Right');
+
+        window.addEventListener('keydown', e => {
+            if(['ArrowUp','w'].includes(e.key)) keys.Up = true;
+            if(['ArrowDown','s'].includes(e.key)) keys.Down = true;
+            if(['ArrowLeft','a'].includes(e.key)) keys.Left = true;
+            if(['ArrowRight','d'].includes(e.key)) keys.Right = true;
+        });
+        window.addEventListener('keyup', e => {
+            if(['ArrowUp','w'].includes(e.key)) keys.Up = false;
+            if(['ArrowDown','s'].includes(e.key)) keys.Down = false;
+            if(['ArrowLeft','a'].includes(e.key)) keys.Left = false;
+            if(['ArrowRight','d'].includes(e.key)) keys.Right = false;
+        });
+
+        document.getElementById('speedInput').oninput = function() {
+            const labels = ["Slow", "Normal", "Fast"];
+            document.getElementById('speedDisplay').innerText = labels[this.value-1];
+            parlaySpeedBase = [3, 5, 8][this.value-1];
+        };
+    };
+
+    function setupTouchBtn(id, keyName) {
+        const btn = document.getElementById(id);
+        btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[keyName] = true; }, {passive: false});
+        btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyName] = false; }, {passive: false});
+    }
+
+    function startIntro() {
+        document.getElementById('startScreen').style.display = 'none';
+        document.getElementById('introScreen').style.display = 'block';
+        
+        // REVISED AUDIO: Play endgame.mp3 during opening credits
+        if(AUDIO.endgame) {
+            AUDIO.endgame.currentTime = 0;
+            AUDIO.endgame.play().catch(e => console.log("Click required"));
+        }
+        
+        setTimeout(() => {
+            if(document.getElementById('introScreen').style.display === 'block') startGame();
+        }, 22000);
+    }
+
+    function startGame() {
+        document.getElementById('introScreen').style.display = 'none';
+        document.getElementById('gameScreen').style.display = 'block';
+        
+        // REVISED AUDIO: Stop endgame, Play hangover
+        if(AUDIO.endgame) AUDIO.endgame.pause();
+        if(AUDIO.hangover) {
+            AUDIO.hangover.currentTime = 0;
+            AUDIO.hangover.play();
+        }
+
+        canvas = document.getElementById('gameCanvas');
+        ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        miniCanvas = document.getElementById('minimap');
+        miniCtx = miniCanvas.getContext('2d');
+        
+        lives = 3; 
+        resetLevel();
+        gameLoop = requestAnimationFrame(update);
+    }
+
+    function resetLevel() {
+        items = []; ghosts = []; blockers = [];
+        MAP = JSON.parse(JSON.stringify(BASE_MAP)); 
+        
+        if(score === 0) stats = { pizza:0, pasta:0, potato:0, box:0, sheldon:0, ramsay:0, hugs:0 };
+        totalFood = 0;
+        
+        for(let r=0; r<ROWS; r++) {
+            for(let c=0; c<COLS; c++) {
+                let cell = MAP[r][c];
+                let x = c*TILE + TILE/2;
+                let y = r*TILE + TILE/2;
+                if(cell === 0) {
+                    if(Math.random() < 0.15) items.push({c, r, type: 'shrimp', val:0});
+                    else {
+                        let foodType = Math.random() > 0.6 ? 'pizza' : (Math.random() > 0.5 ? 'pasta' : 'potato');
+                        items.push({c, r, type: foodType, val:100});
+                        totalFood++;
+                    }
+                }
+                if(cell === 2) items.push({c, r, type:'box', val:0});
+                if(cell === 'P') { 
+                    player.x = x; player.y = y; player.c = c; player.r = r;
+                    MAP[r][c] = 0; 
+                }
+                if(cell === 5) {
+                    for(let i=0; i<4; i++) ghosts.push({ x:x, y:y, vx:0, vy:0, speed:parlaySpeedBase });
+                }
+            }
+        }
+        updateLives();
+    }
+
+    function update() {
+        if(document.getElementById('gameScreen').style.display === 'none') return;
+        if(lives <= 0) return; 
+
+        if(isInvincible) {
+            invincibleTimer--;
+            if(invincibleTimer <= 0) isInvincible = false;
+        }
+
+        updateBlockers();
+        movePlayer();
+        moveGhosts();
+        handleHusband();
+        updateCamera();
+        checkCollisions();
+        draw();
+        drawMinimap();
+        
+        document.getElementById('foodVal').innerText = totalFood;
+        frameCount++;
+        gameLoop = requestAnimationFrame(update);
+    }
+
+    function updateBlockers() {
+        let now = Date.now();
+        for(let i = blockers.length - 1; i >= 0; i--) {
+            let b = blockers[i];
+            if(now > b.expires) {
+                MAP[b.r][b.c] = 9; 
+                blockers.splice(i, 1);
+            }
+        }
+    }
+
+    function movePlayer() {
+        const speed = 14; 
+        let dx = 0; let dy = 0;
+        if(keys.Up) dy = -speed;
+        if(keys.Down) dy = speed;
+        if(keys.Left) dx = -speed;
+        if(keys.Right) dx = speed;
+        if(dx !== 0 && dy !== 0) { dx *= 0.707; dy *= 0.707; }
+
+        if(dx !== 0 || dy !== 0) {
+            let margin = TILE * 0.35; 
+            if(!checkWallCollision(player.x + dx, player.y, margin)) player.x += dx;
+            if(!checkWallCollision(player.x, player.y + dy, margin)) player.y += dy;
+
+            if(frameCount % ANIM_SPEED === 0) player.animFrame++;
+            if(dx < 0) player.facingLeft = true;
+            if(dx > 0) player.facingLeft = false;
+        } else {
+            player.animFrame = 0;
+        }
+        player.c = Math.floor(player.x / TILE);
+        player.r = Math.floor(player.y / TILE);
+    }
+
+    function checkWallCollision(px, py, radius) {
+        let points = [
+            {c: Math.floor((px - radius)/TILE), r: Math.floor((py - radius)/TILE)},
+            {c: Math.floor((px + radius)/TILE), r: Math.floor((py - radius)/TILE)},
+            {c: Math.floor((px - radius)/TILE), r: Math.floor((py + radius)/TILE)},
+            {c: Math.floor((px + radius)/TILE), r: Math.floor((py + radius)/TILE)}
+        ];
+        for(let p of points) {
+            if(p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) return true;
+            if(MAP[p.r][p.c] === 1 || MAP[p.r][p.c] === 8) return true;
+        }
+        return false;
+    }
+
+    function spawnBlocker(type, c, r) {
+        MAP[r][c] = 8; // Set Wall
+        blockers.push({ type: type, c: c, r: r, expires: Date.now() + BLOCKER_DURATION });
+        
+        // FIX: Find the nearest safe neighbor and TELEPORT player there
+        // This guarantees she is not stuck inside the new wall
+        let neighbors = [
+            {c: c+1, r: r}, {c: c-1, r: r}, {c: c, r: r+1}, {c: c, r: r-1}
+        ];
+        
+        let best = null;
+        let minDist = 999999;
+        
+        neighbors.forEach(n => {
+            if(n.c >= 0 && n.c < COLS && n.r >= 0 && n.r < ROWS) {
+                // Check if this neighbor is walkable (not wall, not another blocker)
+                if(MAP[n.r][n.c] !== 1 && MAP[n.r][n.c] !== 8) {
+                     let nx = n.c * TILE + TILE/2;
+                     let ny = n.r * TILE + TILE/2;
+                     // Find distance from player
+                     let d = Math.sqrt((player.x - nx)**2 + (player.y - ny)**2);
+                     if(d < minDist) {
+                         minDist = d;
+                         best = {x: nx, y: ny};
+                     }
+                }
+            }
+        });
+        
+        if(best) {
+            player.x = best.x;
+            player.y = best.y;
+        }
+        // If somehow no valid neighbors (trapped), she stays stuck until blocker expires.
+    }
+
+    function moveGhosts() {
+        ghosts.forEach(g => {
+            let gc = Math.floor(g.x / TILE);
+            let gr = Math.floor(g.y / TILE);
+            let centerX = gc*TILE + TILE/2;
+            let centerY = gr*TILE + TILE/2;
+            g.x += g.vx; g.y += g.vy;
+            
+            let dist = Math.sqrt((g.x-centerX)**2 + (g.y-centerY)**2);
+            if(dist < g.speed || (g.vx===0 && g.vy===0)) {
+                g.x = centerX; g.y = centerY;
+                let opts = [];
+                if(!isWall(gc+1, gr)) opts.push({x:1, y:0});
+                if(!isWall(gc-1, gr)) opts.push({x:-1, y:0});
+                if(!isWall(gc, gr+1)) opts.push({x:0, y:1});
+                if(!isWall(gc, gr-1)) opts.push({x:0, y:-1});
+
+                let pDist = Math.abs(player.c - gc) + Math.abs(player.r - gr);
+                if(pDist < 7 && Math.random() > 0.2) {
+                    let bestDir = null; let minD = 9999;
+                    opts.sort(() => Math.random() - 0.5);
+                    opts.forEach(d => {
+                        let nc = gc + d.x; let nr = gr + d.y;
+                        let dd = Math.abs(player.c - nc) + Math.abs(player.r - nr);
+                        if(dd < minD) { minD = dd; bestDir = d; }
+                    });
+                    if(bestDir) { g.vx = bestDir.x * g.speed; g.vy = bestDir.y * g.speed; }
+                    else if(opts.length > 0) { let d = opts[0]; g.vx = d.x * g.speed; g.vy = d.y * g.speed; }
+                } else {
+                    if(opts.length > 0) {
+                        let forwardOpts = opts.filter(o => o.x !== -Math.sign(g.vx) || o.y !== -Math.sign(g.vy));
+                        let d = forwardOpts.length > 0 ? forwardOpts[Math.floor(Math.random()*forwardOpts.length)] : opts[Math.floor(Math.random()*opts.length)];
+                        g.vx = d.x * g.speed; g.vy = d.y * g.speed;
+                    } else { g.vx = -g.vx; g.vy = -g.vy; }
+                }
+            }
+        });
+    }
+
+    function isWall(c, r) {
+        if(c < 0 || c >= COLS || r < 0 || r >= ROWS) return true;
+        return MAP[r][c] === 1 || MAP[r][c] === 8;
+    }
+
+    function checkCollisions() {
+        let iIdx = items.findIndex(i => i.c === player.c && i.r === player.r);
+        if(iIdx !== -1) {
+            let item = items[iIdx];
+            if(item.type === 'shrimp') {
+                stats.ramsay++;
+                if(AUDIO.ramsay) AUDIO.ramsay.play();
+                spawnBlocker('ramsay', item.c, item.r);
+                items.splice(iIdx, 1);
+            }
+            else if(item.type === 'box') {
+                if(Math.random() > 0.5) {
+                    score += 500; stats.box++;
+                    items.splice(iIdx, 1);
+                } else {
+                    stats.sheldon++;
+                    if(AUDIO.bazinga) AUDIO.bazinga.play();
+                    spawnBlocker('sheldon', item.c, item.r);
+                    items.splice(iIdx, 1);
+                }
+            } 
+            else {
+                score += item.val;
+                if(item.type === 'pizza') stats.pizza++;
+                if(item.type === 'pasta') stats.pasta++;
+                if(item.type === 'potato') stats.potato++;
+                totalFood--;
+                items.splice(iIdx, 1);
+            }
+        }
+        
+        ghosts.forEach(g => {
+            let d = Math.sqrt((player.x-g.x)**2 + (player.y-g.y)**2);
+            if(d < TILE * 0.6) {
+                if(isInvincible) {
+                    g.x = (COLS/2)*TILE; g.y = (ROWS/2)*TILE; 
+                    score += 100;
+                    if(AUDIO.chaching) { AUDIO.chaching.currentTime = 0; AUDIO.chaching.play(); }
+                } else {
+                    lives--;
+                    updateLives();
+                    if(lives <= 0) gameOver();
+                    else {
+                        player.c = 9; player.r = 14;
+                        player.x = 9 * TILE + TILE/2; 
+                        player.y = 14 * TILE + TILE/2;
+                    }
+                }
+            }
+        });
+    }
+
+    function handleHusband() {
+        if(score > 0 && score % 1500 === 0 && !husband.active && score > husband.lastScore) {
+            husband.lastScore = score; 
+            let attempts = 0;
+            do {
+                husband.c = Math.floor(Math.random() * (COLS-2)) + 1;
+                husband.r = Math.floor(Math.random() * (ROWS-2)) + 1;
+                attempts++;
+            } while(isWall(husband.c, husband.r) && attempts < 100);
+            husband.x = husband.c * TILE + TILE/2;
+            husband.y = husband.r * TILE + TILE/2;
+            husband.active = true;
+            husband.timer = 1200; 
+        }
+        if(husband.active) {
+            husband.timer--;
+            if(husband.timer <= 0) husband.active = false;
+            let d = Math.sqrt((player.x-husband.x)**2 + (player.y-husband.y)**2);
+            if(d < TILE) {
+                stats.hugs++;
+                if(AUDIO.loveyoubumbum) AUDIO.loveyoubumbum.play();
+                isInvincible = true; invincibleTimer = 600; 
+                husband.active = false;
+            }
+        } else {
+            if(score % 1500 !== 0) husband.lastScore = 0;
+        }
+    }
+
+    function updateCamera() {
+        camera.x = player.x - canvas.width / 2;
+        camera.y = player.y - canvas.height / 2;
+        camera.x = Math.max(0, Math.min(camera.x, WORLD_WIDTH - canvas.width));
+        camera.y = Math.max(0, Math.min(camera.y, WORLD_HEIGHT - canvas.height));
+        if(WORLD_WIDTH < canvas.width) camera.x = -(canvas.width - WORLD_WIDTH)/2;
+        if(WORLD_HEIGHT < canvas.height) camera.y = -(canvas.height - WORLD_HEIGHT)/2;
+    }
+
+    function draw() {
+        ctx.clearRect(0,0,canvas.width, canvas.height);
+        ctx.save();
+        ctx.translate(-camera.x, -camera.y);
+
+        // 1. SCROLLING BG
+        if(IMAGES.vegas) {
+            ctx.drawImage(IMAGES.vegas, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+        }
+
+        // 2. WALLS
+        ctx.lineWidth = 4;
+        let time = Date.now() / 20; 
+        ctx.beginPath();
+        for(let r=0; r<ROWS; r++) {
+            for(let c=0; c<COLS; c++) {
+                if(MAP[r][c] === 1) {
+                    let hue = (c * 10 + r * 10 + time) % 360;
+                    ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
+                    ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
+                    ctx.shadowBlur = 15;
+                    ctx.strokeRect(c*TILE + 8, r*TILE + 8, TILE-16, TILE-16);
+                    ctx.shadowBlur = 0;
+                    ctx.closePath(); ctx.stroke(); ctx.beginPath(); 
+                }
+            }
+        }
+
+        items.forEach(i => {
+            let img = IMAGES[i.type] || IMAGES.pizza;
+            ctx.drawImage(img, i.c*TILE+15, i.r*TILE+15, TILE-30, TILE-30);
+        });
+
+        blockers.forEach(b => {
+             let img = b.type === 'ramsay' ? IMAGES.ramsay : IMAGES.sheldon;
+             let shake = Math.random() * 4 - 2;
+             ctx.drawImage(img, b.c*TILE + shake, b.r*TILE + shake, TILE, TILE);
+        });
+
+        if(husband.active) {
+            ctx.save();
+            let scale = 1 + Math.sin(Date.now()/200)*0.1;
+            ctx.translate(husband.x, husband.y);
+            ctx.scale(scale, scale);
+            ctx.drawImage(IMAGES.husband, -TILE/2, -TILE/2, TILE, TILE);
+            ctx.restore();
+        }
+
+        ctx.save();
+        ctx.translate(player.x, player.y);
+        if(player.facingLeft) ctx.scale(-1, 1);
+        
+        let sprite = IMAGES.idle;
+        if(keys.Up || keys.Down || keys.Left || keys.Right) {
+             let frame = Math.floor(player.animFrame) % 2; 
+             if(frame === 0) sprite = IMAGES.wife3;
+             else sprite = IMAGES.idle;
+        }
+
+        if(isInvincible) {
+            if(Math.floor(frameCount/5)%2===0) ctx.globalAlpha = 0.4;
+            ctx.beginPath(); ctx.arc(0,0, TILE/1.5, 0, Math.PI*2);
+            ctx.strokeStyle = "white"; ctx.stroke();
+        }
+        ctx.drawImage(sprite, -TILE/2, -TILE/2, TILE, TILE);
+        ctx.restore();
+
+        ghosts.forEach(g => {
+            if(isInvincible) ctx.globalAlpha = 0.5;
+            ctx.drawImage(IMAGES.parlay, g.x - TILE/2, g.y - TILE/2, TILE, TILE);
+            ctx.globalAlpha = 1.0;
+        });
+
+        ctx.restore();
+        document.getElementById('scoreVal').innerText = score;
+    }
+
+    function drawMinimap() {
+        if(!miniCtx) return;
+        const scaleX = miniCanvas.width / WORLD_WIDTH;
+        const scaleY = miniCanvas.height / WORLD_HEIGHT;
+        miniCtx.fillStyle = "rgba(0,0,0,0.5)";
+        miniCtx.fillRect(0, 0, miniCanvas.width, miniCanvas.height);
+        miniCtx.fillStyle = "#666";
+        for(let r=0; r<ROWS; r++) {
+            for(let c=0; c<COLS; c++) {
+                if(MAP[r][c] === 1) miniCtx.fillRect(c*TILE*scaleX, r*TILE*scaleY, TILE*scaleX, TILE*scaleY);
+            }
+        }
+        miniCtx.fillStyle = "#00ff00";
+        miniCtx.beginPath(); miniCtx.arc(player.x*scaleX, player.y*scaleY, 3, 0, Math.PI*2); miniCtx.fill();
+        miniCtx.fillStyle = "#ff0000";
+        ghosts.forEach(g => { miniCtx.beginPath(); miniCtx.arc(g.x*scaleX, g.y*scaleY, 2, 0, Math.PI*2); miniCtx.fill(); });
+        if(husband.active) {
+            miniCtx.fillStyle = "white";
+            miniCtx.fillRect((husband.x-TILE/2)*scaleX, (husband.y-TILE/2)*scaleY, TILE*scaleX, TILE*scaleY);
+        }
+    }
+    
+    function updateLives() {
+        let lHtml = "";
+        for(let i=0; i<lives; i++) lHtml += `<img src="idle.png" style="height:30px; margin-right:5px;">`;
+        document.getElementById('livesVal').innerHTML = lHtml;
+    }
+
+    function gameOver() {
+        saveScore(score);
+        cancelAnimationFrame(gameLoop);
+
+        if(AUDIO.hangover) AUDIO.hangover.pause();
+        if(AUDIO.endgame) {
+            AUDIO.endgame.currentTime = 0;
+            AUDIO.endgame.play();
+        }
+
+        document.getElementById('gameScreen').style.display = 'none';
+        document.getElementById('gameOverScreen').style.display = 'block';
+
+        document.getElementById('statPizza').innerText = stats.pizza;
+        document.getElementById('statPasta').innerText = stats.pasta;
+        document.getElementById('statPotato').innerText = stats.potato;
+        document.getElementById('statBox').innerText = stats.box;
+        document.getElementById('statSheldon').innerText = stats.sheldon;
+        document.getElementById('statRamsay').innerText = stats.ramsay;
+        document.getElementById('statHugs').innerText = stats.hugs;
+        document.getElementById('finalScore').innerText = score;
+
+        setTimeout(() => {
+            document.getElementById('receiptContainer').style.bottom = "50%";
+            document.getElementById('receiptContainer').style.transform = "translate(-50%, 50%)";
+        }, 25000);
+    }
+
+    function saveScore(s) {
+        let sc = JSON.parse(localStorage.getItem('vegasScores') || "[]");
+        sc.push({d: new Date().toLocaleDateString(), s:s});
+        sc.sort((a,b) => b.s - a.s);
+        localStorage.setItem('vegasScores', JSON.stringify(sc.slice(0,5)));
+    }
+    function loadScores() {
+        let sc = JSON.parse(localStorage.getItem('vegasScores') || "[]");
+        let html = sc.length ? "" : "No scores yet!";
+        sc.forEach(x => html += `<div>${x.d}: ${x.s}</div>`);
+        document.getElementById('highScores').innerHTML = html;
+    }
+</script>
+</body>
+</html>
