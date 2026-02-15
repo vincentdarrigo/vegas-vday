@@ -341,7 +341,8 @@
     // --- CONFIGURATION ---
     const TILE = 125; 
     const ANIM_SPEED = 8; 
-    const BLOCKER_DURATION = 10000; 
+    const BLOCKER_DURATION = 5000; // REDUCED TO 5 SECONDS
+    const HUSBAND_SCORE_THRESHOLD = 500; // HUSBAND APPEARS EVERY 500
 
     // Map: 1=Wall, 0=Food, 2=Box, 9=Empty, 5=GhostSpawn, 'P'=Player
     const BASE_MAP = [
@@ -374,7 +375,7 @@
     const IMAGES = {};
     const AUDIO = {};
     const ASSET_NAMES = ['wife3', 'idle', 'husband', 'parlay', 'ramsay', 'sheldon', 'pizza', 'pasta', 'potato', 'shrimp', 'box', 'hug', 'vegas', 'winner'];
-    const AUDIO_NAMES = ['hangover', 'ramsay', 'bazinga', 'loveyoubumbum', 'chaching', 'endgame'];
+    const AUDIO_NAMES = ['hangover', 'ramsay', 'bazinga', 'loveyoubumbum', 'chaching', 'endgame', 'splat'];
 
     function loadAssets() {
         ASSET_NAMES.forEach(name => {
@@ -390,6 +391,7 @@
             AUDIO.hangover.volume = 0.4;
         }
         if(AUDIO.chaching) AUDIO.chaching.volume = 0.6;
+        if(AUDIO.splat) AUDIO.splat.volume = 0.8;
         if(AUDIO.endgame) AUDIO.endgame.loop = true; 
     }
 
@@ -408,18 +410,19 @@
     let player = { x:0, y:0, c:0, r:0, animFrame: 0, facingLeft: false };
     let ghosts = [];
     let items = [];
-    let husband = { active: false, x:0, y:0, timer:0, lastScore: 0 };
+    let husband = { active: false, x:0, y:0, timer:0, lastScore: 0, vx:0, vy:0 };
     let gamePaused = false;
     let gameWon = false;
 
     // Winner Animation Vars
     let winAnim = {
-        wifeX: -100,
+        wifeX: -150,
         husbX: 0,
         groundY: 0,
-        credits: [],
-        creditTimer: 0,
-        state: 'RUNNING' // RUNNING, HUGGING
+        items: [],
+        spawnTimer: 0,
+        state: 'RUN_TO_HUG', // RUN_TO_HUG, HUGGING, KICKING
+        kickTimer: 0
     };
 
     window.onload = function() {
@@ -529,10 +532,10 @@
         let idx = items.findIndex(i => i.type === 'shrimp' && i.c === c && i.r === r);
         if(idx !== -1) {
             items.splice(idx, 1); // Delete the shrimp
-            // Play a sound to confirm delete? using existing sounds
-            if(AUDIO.chaching) { 
-                let s = AUDIO.chaching.cloneNode(); 
-                s.volume = 0.3; s.play().catch(e=>{});
+            // Play a sound to confirm delete
+            if(AUDIO.splat) { 
+                let s = AUDIO.splat.cloneNode(); 
+                s.volume = 0.6; s.play().catch(e=>{});
             }
         }
     }
@@ -667,6 +670,7 @@
         MAP[r][c] = 8; // Set Wall
         blockers.push({ type: type, c: c, r: r, expires: Date.now() + BLOCKER_DURATION });
         
+        // Teleport if trapped logic would go here if needed
         let neighbors = [
             {c: c+1, r: r}, {c: c-1, r: r}, {c: c, r: r+1}, {c: c, r: r-1}
         ];
@@ -819,7 +823,7 @@
     }
 
     function handleHusband() {
-        if(score > 0 && score % 1500 === 0 && !husband.active && score > husband.lastScore) {
+        if(score > 0 && score % HUSBAND_SCORE_THRESHOLD === 0 && !husband.active && score > husband.lastScore) {
             husband.lastScore = score; 
             let attempts = 0;
             do {
@@ -831,10 +835,29 @@
             husband.y = husband.r * TILE + TILE/2;
             husband.active = true;
             husband.timer = 1200; 
+            // Random start velocity
+            husband.vx = (Math.random() > 0.5 ? 2 : -2);
+            husband.vy = (Math.random() > 0.5 ? 2 : -2);
         }
         if(husband.active) {
             husband.timer--;
+            
+            // --- MOVEMENT LOGIC ---
+            // Wander freely, bounce off world edges
+            husband.x += husband.vx;
+            husband.y += husband.vy;
+            
+            if(husband.x < 0 || husband.x > WORLD_WIDTH) husband.vx = -husband.vx;
+            if(husband.y < 0 || husband.y > WORLD_HEIGHT) husband.vy = -husband.vy;
+            
+            // Change direction randomly occasionally
+            if(Math.random() < 0.02) {
+                husband.vx = (Math.random() - 0.5) * 6;
+                husband.vy = (Math.random() - 0.5) * 6;
+            }
+
             if(husband.timer <= 0) husband.active = false;
+            
             let d = Math.sqrt((player.x-husband.x)**2 + (player.y-husband.y)**2);
             if(d < TILE) {
                 // CAUGHT HUSBAND
@@ -854,7 +877,7 @@
                 }, 3000); // 3 Second Linger
             }
         } else {
-            if(score % 1500 !== 0) husband.lastScore = 0;
+            if(score % HUSBAND_SCORE_THRESHOLD !== 0) husband.lastScore = 0;
         }
     }
 
@@ -957,13 +980,13 @@
             }
         }
         
-        // Draw Gift Boxes on Minimap
-        miniCtx.fillStyle = "#FFD700"; // Gold
+        // Draw Gift Boxes AND FOOD on Minimap (ALWAYS)
         items.forEach(i => {
             if(i.type === 'box') {
+                 miniCtx.fillStyle = "#FFD700"; // Gold
                  miniCtx.fillRect(i.c*TILE*scaleX, i.r*TILE*scaleY, TILE*scaleX, TILE*scaleY);
-            } else if (totalFood < 20 && i.type !== 'shrimp') {
-                // REVEAL FOOD WHEN LOW
+            } else if (i.type !== 'shrimp') {
+                // Show Food as Cyan Dots
                 miniCtx.fillStyle = "#0ff"; // Cyan
                 miniCtx.fillRect(i.c*TILE*scaleX, i.r*TILE*scaleY, 3, 3);
             }
@@ -979,7 +1002,7 @@
         }
     }
 
-    // --- WINNER LOGIC ---
+    // --- WINNER LOGIC (DIRECTOR'S CUT) ---
     function startWinnerScreen() {
         gameWon = true;
         document.getElementById('gameScreen').style.display = 'none';
@@ -990,23 +1013,13 @@
         wc.width = window.innerWidth;
         wc.height = window.innerHeight;
         
-        winAnim.groundY = wc.height * 0.85; // Lower quarter
-        winAnim.wifeX = -100;
+        winAnim.groundY = wc.height * 0.85; 
+        winAnim.wifeX = -200;
         winAnim.husbX = wc.width * 0.8; 
-        winAnim.state = 'RUNNING';
-        winAnim.credits = [];
+        winAnim.state = 'RUN_TO_HUG';
+        winAnim.items = [];
+        winAnim.spawnTimer = 0;
         
-        // Populate Credits Parade
-        const creditTypes = ['pizza', 'pasta', 'potato', 'box', 'sheldon', 'ramsay', 'parlay', 'shrimp', 'pizza', 'pasta'];
-        for(let i=0; i<creditTypes.length; i++) {
-            winAnim.credits.push({
-                type: creditTypes[i],
-                x: -200 - (i * 150), // Spaced out behind wife
-                y: winAnim.groundY - 50,
-                kicked: false
-            });
-        }
-
         requestAnimationFrame(updateWinnerAnim);
     }
 
@@ -1021,60 +1034,99 @@
             wCtx.drawImage(IMAGES.winner, 0, 0, wc.width, wc.height);
         }
 
-        // Logic
-        if(winAnim.state === 'RUNNING') {
-            winAnim.wifeX += 5;
+        // 1. Wife Running Logic
+        if(winAnim.state === 'RUN_TO_HUG') {
+            winAnim.wifeX += 6; // Speed up wife
+            // Check if she reached husband. 
+            // Husband is at winAnim.husbX. Wife is at winAnim.wifeX. 
+            // Sprites are approx 150px wide now.
             if(winAnim.wifeX >= winAnim.husbX - 80) {
                 winAnim.state = 'HUGGING';
             }
         }
 
-        // Draw Husband
-        let husbY = winAnim.groundY - 100;
-        let wifeY = winAnim.groundY - 100;
-        
-        // Draw Credits
-        winAnim.credits.forEach(c => {
-            c.x += 6; // Move right
-            if(c.x > wc.width) c.x = -100; // Loop? or just run off. Let's run off.
-
-            let cy = c.y;
-            // Kick Logic
-            if(c.type === 'shrimp' && !c.kicked) {
-                if(c.x > winAnim.husbX - 50 && c.x < winAnim.husbX + 100) {
-                    // Kick!
-                    c.kicked = true;
-                    c.vy = 10; // Fall down
-                }
-            }
-            if(c.kicked) {
-                c.y += c.vy;
-                c.vy += 1; // Gravity
-            }
-
-            if(IMAGES[c.type]) wCtx.drawImage(IMAGES[c.type], c.x, c.y, 60, 60);
-        });
-
-        // Draw Husband
-        let hImg = IMAGES.husband;
-        // Kick visual for husband too?
-        let hOffY = 0;
-        if(winAnim.credits.some(c => c.type === 'shrimp' && c.kicked && c.y < wc.height)) {
-             hOffY = 30; // Slide down
+        // 2. Item Spawning Logic (Sporadic, Top and Bottom lanes)
+        winAnim.spawnTimer++;
+        if(winAnim.spawnTimer > 60 && Math.random() > 0.5) {
+            winAnim.spawnTimer = 0;
+            const creditTypes = ['pizza', 'pasta', 'potato', 'box', 'sheldon', 'ramsay', 'parlay', 'shrimp'];
+            let type = creditTypes[Math.floor(Math.random()*creditTypes.length)];
+            
+            // Randomly choose "Above" (Background) or "Below" (Foreground)
+            let isForeground = Math.random() > 0.5;
+            let spawnY = isForeground ? winAnim.groundY + 20 : winAnim.groundY - 140; 
+            
+            winAnim.items.push({
+                type: type,
+                x: -100,
+                y: spawnY,
+                vx: 4 + Math.random() * 2, // Varied speed
+                kicked: false,
+                vy: 0
+            });
         }
-        wCtx.drawImage(hImg, winAnim.husbX, husbY + hOffY, 100, 100);
 
-        // Draw Wife
-        let wImg = (Math.floor(Date.now()/100)%2===0) ? IMAGES.wife3 : IMAGES.idle;
-        if(winAnim.state === 'HUGGING') wImg = IMAGES.wife3;
+        // 3. Move & Draw Items
+        // We draw Background items first, then couple, then Foreground items
+        let bgItems = winAnim.items.filter(i => i.y < winAnim.groundY);
+        let fgItems = winAnim.items.filter(i => i.y >= winAnim.groundY);
+
+        let drawItem = (item) => {
+             // Logic
+             item.x += item.vx;
+             
+             // KICK LOGIC
+             if(item.type === 'shrimp' && !item.kicked && winAnim.state !== 'RUN_TO_HUG') {
+                 // Check distance to husband
+                 if(item.x > winAnim.husbX - 100 && item.x < winAnim.husbX + 50) {
+                     // TRIGGER KICK
+                     winAnim.state = 'KICKING';
+                     winAnim.kickTimer = 30; // 30 frames of kicking
+                     item.kicked = true;
+                     item.vx = 15; // Kick forward fast
+                     item.vy = -15; // Kick up
+                     // Play splat?
+                     if(AUDIO.splat) AUDIO.splat.play();
+                 }
+             }
+
+             if(item.kicked) {
+                 item.y += item.vy;
+                 item.vy += 1; // Gravity
+             }
+             
+             // Draw (Scaled up 25% -> 75x75)
+             if(IMAGES[item.type]) wCtx.drawImage(IMAGES[item.type], item.x, item.y, 75, 75);
+        };
+
+        bgItems.forEach(drawItem);
+
+        // 4. Draw Couple (Scaled up 50% -> 150x150)
+        let husbY = winAnim.groundY - 150;
+        let wifeY = winAnim.groundY - 150;
         
-        wCtx.drawImage(wImg, winAnim.wifeX, wifeY + hOffY, 100, 100);
-
         if(winAnim.state === 'HUGGING') {
-            // Draw Heart
-             wCtx.font = "50px Arial";
-             wCtx.fillText("❤️", winAnim.husbX - 20, husbY - 20);
+            // Merged Sprite
+            if(IMAGES.hug) wCtx.drawImage(IMAGES.hug, winAnim.husbX - 20, husbY, 160, 160);
+        } 
+        else if (winAnim.state === 'KICKING') {
+            // Husband Kicking Pose (Slide forward slightly)
+            wCtx.drawImage(IMAGES.husband, winAnim.husbX + 30, husbY, 150, 150);
+            // Wife stands back
+            wCtx.drawImage(IMAGES.wife3, winAnim.wifeX - 20, wifeY, 150, 150);
+            
+            winAnim.kickTimer--;
+            if(winAnim.kickTimer <= 0) winAnim.state = 'HUGGING'; // Go back to hugging
         }
+        else {
+            // Running / Standing
+            wCtx.drawImage(IMAGES.husband, winAnim.husbX, husbY, 150, 150);
+            
+            let wImg = (Math.floor(Date.now()/100)%2===0) ? IMAGES.wife3 : IMAGES.idle;
+            wCtx.drawImage(wImg, winAnim.wifeX, wifeY, 150, 150);
+        }
+
+        fgItems.forEach(drawItem);
 
         requestAnimationFrame(updateWinnerAnim);
     }
@@ -1082,7 +1134,7 @@
     function gameOver() {
         saveScore(score);
         cancelAnimationFrame(gameLoop);
-        gameWon = false; // Stop winner anim
+        gameWon = false; 
 
         if(AUDIO.hangover) AUDIO.hangover.pause();
         if(AUDIO.endgame) {
@@ -1090,11 +1142,10 @@
             AUDIO.endgame.play();
         }
 
-        document.getElementById('winnerScreen').style.display = 'none'; // Hide winner if open
+        document.getElementById('winnerScreen').style.display = 'none'; 
         document.getElementById('gameScreen').style.display = 'none';
         document.getElementById('gameOverScreen').style.display = 'block';
         
-        // Reset receipt position if played multiple times
         document.getElementById('receiptContainer').style.bottom = "-150%";
 
         document.getElementById('statPizza').innerText = stats.pizza;
@@ -1109,7 +1160,7 @@
         setTimeout(() => {
             document.getElementById('receiptContainer').style.bottom = "50%";
             document.getElementById('receiptContainer').style.transform = "translate(-50%, 50%)";
-        }, 2500); // Faster reveal
+        }, 2500); 
     }
 
     function skipOutro() {
