@@ -212,7 +212,7 @@
             1. Find your bumbum as many times as you can.<br><br>
             2. Eat ALL the delicious food to clear the board.<br><br>
             WATCH OUT FOR PARLAYS:<br>
-            They will cost you bigtime, don't get burned by 3 or it's game over!<br><br>
+            They will cost you bigtime, sending you back to the start...hug your bumbum for temporary invincibility!<br><br>
             BEWARE SEAFOOD: <br> Eating it makes everyone mad around you!<br>Gift boxes contain more food but watch out for pranks!<br><br>
             Clear the board of pizza, pasta/meatballs, and steak/potatoes while hugging your bumbum as many times as possible when you see him appear!<br><br>
             Tap the seafood to make it disappear before it stinks up the whole city!
@@ -716,6 +716,8 @@
             }
         }
         
+        let playerHit = false;
+
         ghosts.forEach(g => {
             let d = Math.sqrt((player.x-g.x)**2 + (player.y-g.y)**2);
             if(d < TILE * 0.6) {
@@ -724,15 +726,28 @@
                     score += 100;
                     if(AUDIO.chaching) { AUDIO.chaching.currentTime = 0; AUDIO.chaching.play(); }
                 } else {
-                    // UNLIMITED LIFE MOD:
-                    // Instead of game over, she just gets sent back to safety
-                    // No lives-- or gameOver() call.
-                    player.c = 9; player.r = 14;
-                    player.x = 9 * TILE + TILE/2; 
-                    player.y = 14 * TILE + TILE/2;
+                    playerHit = true;
                 }
             }
         });
+
+        if(playerHit) {
+             // 1. Reset Player to Safe Zone
+             player.c = 9; player.r = 14;
+             player.x = 9 * TILE + TILE/2; 
+             player.y = 14 * TILE + TILE/2;
+
+             // 2. Reset ALL Ghosts to Center Spawn
+             let spawnX = 9 * TILE + TILE/2;
+             let spawnY = 8 * TILE + TILE/2;
+             
+             ghosts.forEach(g => {
+                 g.x = spawnX;
+                 g.y = spawnY;
+                 g.vx = 0;
+                 g.vy = 0;
+             });
+        }
     }
 
     function handleHusband() {
