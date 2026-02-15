@@ -19,7 +19,7 @@
         }
 
         /* --- SCREENS --- */
-        #startScreen, #introScreen, #gameScreen, #gameOverScreen, #winnerScreen, #hugScreen {
+        #startScreen, #introScreen, #gameScreen, #gameOverScreen, #winnerScreen, #hugScreen, #slotScreen, #videoScreen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
         }
 
@@ -130,96 +130,102 @@
         }
         #minimap { width: 150px; height: 165px; display: block; }
 
-        /* D-PAD */
-        #dpad {
-            position: absolute; bottom: 20px; right: 20px;
-            width: 180px; height: 180px;
+        /* N64 JOYSTICK */
+        #joystickZone {
+            position: absolute; bottom: 30px; right: 30px;
+            width: 150px; height: 150px;
+            background: rgba(200, 200, 200, 0.3);
+            border-radius: 50%;
+            border: 4px solid #888;
+            box-shadow: inset 0 0 20px #000;
             z-index: 100;
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            grid-template-rows: 1fr 1fr 1fr;
-            gap: 5px;
+            touch-action: none;
         }
-        .d-btn {
-            background: rgba(255, 255, 255, 0.15);
-            border: 2px solid rgba(255, 0, 255, 0.5);
-            border-radius: 10px;
-            touch-action: manipulation;
+        #joystickStick {
+            position: absolute; top: 50%; left: 50%;
+            width: 60px; height: 60px;
+            background: radial-gradient(circle at 30% 30%, #ddd, #888);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            pointer-events: none;
         }
-        .d-btn:active { background: rgba(255, 0, 255, 0.6); }
-        #btn-up { grid-column: 2; grid-row: 1; }
-        #btn-left { grid-column: 1; grid-row: 2; }
-        #btn-right { grid-column: 3; grid-row: 2; }
-        #btn-down { grid-column: 2; grid-row: 3; }
 
         /* CANVAS */
         #gameCanvas { display: block; background: #000; touch-action: none; }
 
-        /* --- HUG SCREEN --- */
-        #hugScreen {
+        /* --- SLOT MACHINE --- */
+        #slotScreen {
             display: none;
-            background: black;
-            z-index: 250;
+            background: rgba(0,0,0,0.9);
+            z-index: 300;
+            flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+        .slot-machine {
+            background: #333;
+            border: 10px solid #ffd700;
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 0 50px #ffd700;
+        }
+        .reels-container {
+            display: flex; gap: 10px; margin-bottom: 20px;
+        }
+        .reel {
+            width: 80px; height: 80px;
+            background: white;
+            border: 3px solid #000;
             display: flex; align-items: center; justify-content: center;
+            font-size: 40px; /* Fallback */
+            overflow: hidden;
         }
-        #hugImage {
-            max-width: 90%;
-            max-height: 80%;
-            border: 5px solid #ff00ff;
-            box-shadow: 0 0 50px #ff00ff;
-            animation: pulseHug 1s infinite;
+        .reel img { width: 100%; height: 100%; object-fit: contain; }
+
+        /* --- VIDEO PLAYER --- */
+        #videoScreen {
+            display: none; background: black; z-index: 400;
+            flex-direction: column; align-items: center; justify-content: center;
         }
+        video { max-width: 100%; max-height: 80vh; }
+        #closeVideoBtn {
+            display: none; margin-top: 20px;
+            background: red; border-color: white;
+        }
+
+        /* --- WINNER / HUG SCREEN --- */
+        #hugScreen { display: none; background: black; z-index: 250; align-items: center; justify-content: center; }
+        #hugImage { max-width: 90%; max-height: 80%; border: 5px solid #ff00ff; box-shadow: 0 0 50px #ff00ff; animation: pulseHug 1s infinite; }
         @keyframes pulseHug { 0%{transform:scale(1);} 50%{transform:scale(1.05);} 100%{transform:scale(1);} }
 
-        /* --- WINNER SCREEN --- */
-        #winnerScreen {
-            display: none;
-            background: black;
-            z-index: 200;
-        }
-        #winnerCanvas {
-            display: block; width: 100%; height: 100%;
-        }
-        #winnerOverlay {
-            position: absolute; top: 10%; width: 100%; text-align: center;
-            text-shadow: 2px 2px 4px #000;
-        }
-        .winner-title {
-            font-size: 40px; color: #ffd700; 
-            text-shadow: 0 0 20px #ff0000;
-            margin-bottom: 10px;
-            animation: bounce 1s infinite;
-        }
+        #winnerScreen { display: none; background: black; z-index: 200; }
+        #winnerCanvas { display: block; width: 100%; height: 100%; }
+        #winnerOverlay { position: absolute; top: 5%; width: 100%; text-align: center; text-shadow: 2px 2px 4px #000; pointer-events: none; }
+        #winnerButtons { position: absolute; bottom: 20px; width: 100%; text-align: center; pointer-events: auto; }
+        .winner-title { font-size: 40px; color: #ffd700; text-shadow: 0 0 20px #ff0000; margin-bottom: 10px; animation: bounce 1s infinite; }
         @keyframes bounce { 0%, 100% {transform:translateY(0);} 50% {transform:translateY(-10px);} }
 
         /* --- GAME OVER / RECEIPT --- */
         #receiptContainer {
-            position: absolute; 
-            bottom: -150%; 
-            left: 50%; 
-            transform: translateX(-50%);
-            width: 320px;
-            text-align: center;
-            transition: bottom 2s cubic-bezier(0.19, 1, 0.22, 1);
+            position: absolute; bottom: -150%; left: 50%; transform: translateX(-50%);
+            width: 320px; text-align: center; transition: bottom 2s cubic-bezier(0.19, 1, 0.22, 1);
             z-index: 210;
         }
-
         .stats-receipt {
-            background: white; color: black;
-            font-family: 'Courier New', monospace;
-            padding: 20px; 
-            border-bottom: 5px dashed black;
-            text-align: left;
-            transform: rotate(-2deg);
-            box-shadow: 0 0 50px rgba(255,255,255,0.3);
-            font-size: 18px;
-            margin-bottom: 20px;
+            background: white; color: black; font-family: 'Courier New', monospace;
+            padding: 20px; border-bottom: 5px dashed black; text-align: left;
+            transform: rotate(-2deg); box-shadow: 0 0 50px rgba(255,255,255,0.3);
+            font-size: 18px; margin-bottom: 20px;
         }
         .receipt-line { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        #skipCreditsBtn { position: absolute; bottom: 30px; right: 30px; z-index:220; background: #fff; color: #ff00ff; border: 2px solid #ff00ff; }
 
-        #skipCreditsBtn {
-            position: absolute; bottom: 30px; right: 30px; z-index:220;
-            background: #fff; color: #ff00ff; border: 2px solid #ff00ff;
+        /* WINNER VIDEO POPUP */
+        #winnerVideoContainer {
+            position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 600px; height: 300px;
+            display: none; z-index: 500; border: 3px solid #ffd700; background: black;
         }
 
     </style>
@@ -229,15 +235,12 @@
     <div id="startScreen">
         <div class="start-overlay">
             <h1 class="title">Vegas Valentine</h1>
-            
             <label>Parlay Intensity: <span id="speedDisplay">Normal</span></label><br>
             <input type="range" id="speedInput" min="1" max="3" value="2" style="width: 200px; margin: 10px 0;">
-
             <div style="margin-top: 20px;">
                 <h3>Top Scores</h3>
                 <div id="highScores" style="font-size: 16px; color: #ffd700;">Loading...</div>
             </div>
-
             <button onclick="startIntro()">Start Run</button>
         </div>
     </div>
@@ -255,11 +258,30 @@
             Tap the seafood to make it disappear before it stinks up the whole city!
             Good Luck Bbbbyyyykins!
         </div>
-        <button style="position: absolute; bottom: 30px; right: 30px; z-index:95;" onclick="startGame()">SKIP >></button>
+        <button style="position: absolute; bottom: 30px; right: 30px; z-index:95;" onclick="startGame(1)">SKIP >></button>
     </div>
 
     <div id="hugScreen" style="display:none;">
         <img id="hugImage" src="hug.png" alt="HUG!">
+    </div>
+
+    <div id="slotScreen" style="display:none;">
+        <div class="slot-machine">
+            <h2 style="color: #ffd700; margin-top:0;">VEGAS SLOTS!</h2>
+            <div class="reels-container">
+                <div class="reel" id="reel1">?</div>
+                <div class="reel" id="reel2">?</div>
+                <div class="reel" id="reel3">?</div>
+            </div>
+            <div id="slotMessage" style="color: white; height: 30px; margin-bottom: 10px;"></div>
+            <button id="spinBtn" onclick="spinSlots()">SPIN!</button>
+            <button id="closeSlotBtn" onclick="closeSlots()" style="display:none; background: #666; font-size: 18px;">RETURN</button>
+        </div>
+    </div>
+
+    <div id="videoScreen" style="display:none;">
+        <video id="rewardVideo" playsinline></video>
+        <button id="closeVideoBtn" onclick="closeVideo()">CLOSE VIDEO</button>
     </div>
 
     <div id="gameScreen">
@@ -268,7 +290,8 @@
                 <div class="stat-box">SCORE: <span id="scoreVal">0</span></div>
                 <div class="stat-box" style="color: #0ff;">FOOD LEFT: <span id="foodVal">0</span></div>
             </div>
-            </div>
+            <div class="stat-box" style="color: #f0f;">LEVEL: <span id="levelVal">1</span></div>
+        </div>
         
         <button id="endGameBtn" onclick="gameOver()">END GAME</button>
         
@@ -276,11 +299,8 @@
             <canvas id="minimap" width="200" height="220"></canvas>
         </div>
 
-        <div id="dpad">
-            <div class="d-btn" id="btn-up"></div>
-            <div class="d-btn" id="btn-left"></div>
-            <div class="d-btn" id="btn-right"></div>
-            <div class="d-btn" id="btn-down"></div>
+        <div id="joystickZone">
+            <div id="joystickStick"></div>
         </div>
 
         <canvas id="gameCanvas"></canvas>
@@ -289,13 +309,19 @@
     <div id="winnerScreen">
         <div id="winnerOverlay">
             <div class="winner-title">CONGRATULATIONS,<br>YOU DID IT!</div>
-            <button onclick="gameOver()">View Receipt</button>
+        </div>
+        <div id="winnerVideoContainer">
+            <video id="winnerVideo" style="width:100%; height:100%;" controls playsinline></video>
+            <button onclick="document.getElementById('winnerVideoContainer').style.display='none'; document.getElementById('winnerVideo').pause();" style="position:absolute; top:-10px; right:-10px; padding:5px; font-size:12px;">X</button>
         </div>
         <canvas id="winnerCanvas"></canvas>
+        <div id="winnerButtons">
+            <button onclick="gameOver()">Receipt</button>
+            <button id="nextLevelBtn" onclick="startNextLevel()" style="display:none; margin-left:20px; background:#ffd700; color:#000;">TRY LEVEL 2</button>
+        </div>
     </div>
 
     <div id="gameOverScreen">
-        
         <div class="crawl-text outro-crawl" id="outroText">
             Happy Valentine's Day<br>bbbbyyyy<br><br>
             I love you bumbum<br>
@@ -311,9 +337,7 @@
             and bunches<br>
             😍
         </div>
-
         <button id="skipCreditsBtn" onclick="skipOutro()">SKIP CREDITS >></button>
-
         <div id="receiptContainer">
             <div class="stats-receipt">
                 <h3 style="text-align: center; margin-top:0;">VEGAS RECEIPT</h3>
@@ -344,7 +368,20 @@
     const BLOCKER_DURATION = 5000; 
     const HUSBAND_SCORE_THRESHOLD = 500; 
 
-    // Map: 1=Wall, 0=Food, 2=Box, 9=Empty, 5=GhostSpawn, 'P'=Player
+    // ASSETS
+    const ASSET_NAMES = ['wife3', 'idle', 'husband', 'cupid1', 'cupid2', 'parlay', 'ramsay', 'sheldon', 'pizza', 'pasta', 'potato', 'shrimp', 'box', 'hug', 'vegas', 'winner', 'slots'];
+    const AUDIO_NAMES = ['hangover', 'ramsay', 'bazinga', 'loveyoubumbum', 'chaching', 'endgame', 'splat'];
+    const VIDEO_PLAYLIST = [
+        'if-youre-into-it.mp4',
+        'most-beautiful-girl.mp4',
+        'parmesan.mp4',
+        'rhymenocerous.mp4',
+        'business-time.mp4',
+        'boom.mp4'
+    ];
+    let availableVideos = [...VIDEO_PLAYLIST];
+
+    // Map: 1=Wall, 0=Food, 2=Box, 3=Slots, 9=Empty, 5=GhostSpawn, 'P'=Player
     const BASE_MAP = [
         [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
         [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
@@ -374,27 +411,9 @@
 
     const IMAGES = {};
     const AUDIO = {};
-    const ASSET_NAMES = ['wife3', 'idle', 'husband', 'cupid1', 'cupid2', 'parlay', 'ramsay', 'sheldon', 'pizza', 'pasta', 'potato', 'shrimp', 'box', 'hug', 'vegas', 'winner'];
-    const AUDIO_NAMES = ['hangover', 'ramsay', 'bazinga', 'loveyoubumbum', 'chaching', 'endgame', 'splat'];
-
-    function loadAssets() {
-        ASSET_NAMES.forEach(name => {
-            const img = new Image();
-            img.src = name + '.png';
-            IMAGES[name] = img;
-        });
-        AUDIO_NAMES.forEach(name => {
-            AUDIO[name] = new Audio(name + '.mp3');
-        });
-        if(AUDIO.hangover) {
-            AUDIO.hangover.loop = true;
-            AUDIO.hangover.volume = 0.4;
-        }
-        if(AUDIO.chaching) AUDIO.chaching.volume = 0.6;
-        if(AUDIO.splat) AUDIO.splat.volume = 0.8;
-        if(AUDIO.endgame) AUDIO.endgame.loop = true; 
-    }
-
+    
+    // GAME STATE
+    let currentLevel = 1;
     let canvas, ctx, miniCanvas, miniCtx;
     let gameLoop;
     let score = 0;
@@ -410,40 +429,24 @@
     let player = { x:0, y:0, c:0, r:0, animFrame: 0, facingLeft: false };
     let ghosts = [];
     let items = [];
-    let popups = []; // For box reveals
-
-    // HUSBAND LOGIC
-    let husband = { 
-        active: false, 
-        x:0, y:0, 
-        timer:0, 
-        lastScore: 0, 
-        vx:0, vy:0,
-        state: 'FLYING' // START FLYING IMMEDIATELY TO TEST
-    };
-    
+    let popups = [];
     let gamePaused = false;
     let gameWon = false;
 
-    // Winner Animation Vars
-    let winAnim = {
-        wifeX: -150,
-        husbX: 0,
-        groundY: 0,
-        items: [],
-        spawnTimer: 0,
-        state: 'RUN_TO_HUG', // RUN_TO_HUG, HUGGING, KICKING
-        kickTimer: 0
+    // HUSBAND AI
+    let husband = { 
+        active: false, x:0, y:0, timer:0, lastScore: 0, vx:0, vy:0, state: 'FLYING'
     };
+
+    // WINNER ANIMATION
+    let winAnim = { wifeX: -150, husbX: 0, groundY: 0, items: [], spawnTimer: 0, state: 'RUN_TO_HUG', kickTimer: 0 };
 
     window.onload = function() {
         loadAssets();
         loadScores();
-        setupTouchBtn('btn-up', 'Up');
-        setupTouchBtn('btn-down', 'Down');
-        setupTouchBtn('btn-left', 'Left');
-        setupTouchBtn('btn-right', 'Right');
+        initJoystick();
 
+        // Keyboard Support (Backup)
         window.addEventListener('keydown', e => {
             if(['ArrowUp','w'].includes(e.key)) keys.Up = true;
             if(['ArrowDown','s'].includes(e.key)) keys.Down = true;
@@ -463,52 +466,102 @@
             parlaySpeedBase = [3, 5, 8][this.value-1];
         };
 
-        // Prevent accidental zooming logic
-        document.addEventListener('touchmove', function(event) {
-            if (event.scale !== 1) { event.preventDefault(); }
-        }, { passive: false });
+        // Prevent accidental zooming
+        document.addEventListener('touchmove', function(event) { if (event.scale !== 1) event.preventDefault(); }, { passive: false });
+        document.addEventListener('dblclick', function(event) { event.preventDefault(); }, { passive: false });
         
-        document.addEventListener('dblclick', function(event) {
-            event.preventDefault();
-        }, { passive: false });
+        // Winner Canvas Tap
+        document.getElementById('winnerCanvas').addEventListener('click', function(e) {
+            if(winAnim.state === 'HUGGING') {
+                let v = document.getElementById('winnerVideo');
+                v.src = 'squareone.mp4';
+                document.getElementById('winnerVideoContainer').style.display = 'block';
+                v.play();
+            }
+        });
     };
 
-    function setupTouchBtn(id, keyName) {
-        const btn = document.getElementById(id);
-        btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[keyName] = true; }, {passive: false});
-        btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyName] = false; }, {passive: false});
+    function loadAssets() {
+        ASSET_NAMES.forEach(name => {
+            const img = new Image();
+            img.src = name + '.png';
+            IMAGES[name] = img;
+        });
+        AUDIO_NAMES.forEach(name => {
+            AUDIO[name] = new Audio(name + '.mp3');
+        });
+        if(AUDIO.hangover) { AUDIO.hangover.loop = true; AUDIO.hangover.volume = 0.4; }
+        if(AUDIO.chaching) AUDIO.chaching.volume = 0.6;
+        if(AUDIO.splat) AUDIO.splat.volume = 0.8;
+        if(AUDIO.endgame) AUDIO.endgame.loop = true; 
+    }
+
+    // --- JOYSTICK LOGIC ---
+    function initJoystick() {
+        const zone = document.getElementById('joystickZone');
+        const stick = document.getElementById('joystickStick');
+        let startX, startY;
+        
+        zone.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            stick.style.transition = 'none';
+        }, {passive:false});
+
+        zone.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            let deltaX = touch.clientX - startX;
+            let deltaY = touch.clientY - startY;
+            const dist = Math.sqrt(deltaX**2 + deltaY**2);
+            const maxDist = 45; 
+            
+            if(dist > maxDist) {
+                const angle = Math.atan2(deltaY, deltaX);
+                deltaX = Math.cos(angle) * maxDist;
+                deltaY = Math.sin(angle) * maxDist;
+            }
+            
+            stick.style.transform = `translate(calc(-50% + ${deltaX}px), calc(-50% + ${deltaY}px))`;
+            
+            // Map to Keys
+            keys.Up = deltaY < -20;
+            keys.Down = deltaY > 20;
+            keys.Left = deltaX < -20;
+            keys.Right = deltaX > 20;
+        }, {passive:false});
+
+        zone.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            stick.style.transform = `translate(-50%, -50%)`;
+            keys.Up = false; keys.Down = false; keys.Left = false; keys.Right = false;
+        }, {passive:false});
     }
 
     function startIntro() {
         document.getElementById('startScreen').style.display = 'none';
         document.getElementById('introScreen').style.display = 'block';
-        
-        if(AUDIO.endgame) {
-            AUDIO.endgame.currentTime = 0;
-            AUDIO.endgame.play().catch(e => console.log("Click required"));
-        }
-        
-        setTimeout(() => {
-            if(document.getElementById('introScreen').style.display === 'block') startGame();
-        }, 22000);
+        if(AUDIO.endgame) { AUDIO.endgame.currentTime = 0; AUDIO.endgame.play().catch(e => console.log("Click required")); }
+        setTimeout(() => { if(document.getElementById('introScreen').style.display === 'block') startGame(1); }, 22000);
     }
 
-    function startGame() {
+    function startGame(lvl) {
+        currentLevel = lvl;
+        document.getElementById('levelVal').innerText = currentLevel;
         document.getElementById('introScreen').style.display = 'none';
         document.getElementById('gameScreen').style.display = 'block';
+        document.getElementById('winnerScreen').style.display = 'none';
         
         if(AUDIO.endgame) AUDIO.endgame.pause();
-        if(AUDIO.hangover) {
-            AUDIO.hangover.currentTime = 0;
-            AUDIO.hangover.play();
-        }
+        if(AUDIO.hangover) { AUDIO.hangover.currentTime = 0; AUDIO.hangover.play(); }
 
         canvas = document.getElementById('gameCanvas');
         ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
         
-        // Add listener for tapping shrimp
+        // Tap Listener for Shrimp
         canvas.addEventListener('mousedown', handleCanvasTap);
         canvas.addEventListener('touchstart', handleCanvasTap, {passive: false});
 
@@ -516,38 +569,30 @@
         miniCtx = miniCanvas.getContext('2d');
         
         resetLevel();
+        gameWon = false;
+        gamePaused = false;
         gameLoop = requestAnimationFrame(update);
     }
 
-    // New Function to handle tapping shrimp
+    function startNextLevel() {
+        startGame(2);
+    }
+
     function handleCanvasTap(e) {
         if(gamePaused || gameWon) return;
         e.preventDefault();
-        let cx, cy;
-        if(e.type === 'touchstart') {
-            cx = e.touches[0].clientX;
-            cy = e.touches[0].clientY;
-        } else {
-            cx = e.clientX;
-            cy = e.clientY;
-        }
+        let cx = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+        let cy = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
         
-        // Convert screen coord to game coord
         let gameX = cx + camera.x;
         let gameY = cy + camera.y;
-        
         let c = Math.floor(gameX / TILE);
         let r = Math.floor(gameY / TILE);
         
-        // Find if there is a shrimp item there
         let idx = items.findIndex(i => i.type === 'shrimp' && i.c === c && i.r === r);
         if(idx !== -1) {
-            items.splice(idx, 1); // Delete the shrimp
-            // Play a sound to confirm delete
-            if(AUDIO.splat) { 
-                let s = AUDIO.splat.cloneNode(); 
-                s.volume = 0.6; s.play().catch(e=>{});
-            }
+            items.splice(idx, 1);
+            if(AUDIO.splat) { let s = AUDIO.splat.cloneNode(); s.volume = 0.6; s.play().catch(e=>{}); }
         }
     }
 
@@ -555,40 +600,61 @@
         items = []; ghosts = []; blockers = []; popups = [];
         MAP = JSON.parse(JSON.stringify(BASE_MAP)); 
         
-        if(score === 0) stats = { pizza:0, pasta:0, potato:0, box:0, sheldon:0, ramsay:0, hugs:0 };
+        // Reset score only on Level 1
+        if(currentLevel === 1) {
+            score = 0;
+            stats = { pizza:0, pasta:0, potato:0, box:0, sheldon:0, ramsay:0, hugs:0 };
+        }
         totalFood = 0;
         
+        // 1. Prepare Box Rewards Deck (Shuffle)
+        let rewardDeck = ['pizza', 'pasta', 'potato', 'shrimp'];
+        // Fill deck with more random items
+        for(let i=0; i<10; i++) rewardDeck.push(['pizza','pasta','potato','shrimp'][Math.floor(Math.random()*4)]);
+        rewardDeck.sort(() => Math.random() - 0.5);
+
         for(let r=0; r<ROWS; r++) {
             for(let c=0; c<COLS; c++) {
                 let cell = MAP[r][c];
                 let x = c*TILE + TILE/2;
                 let y = r*TILE + TILE/2;
+                
                 if(cell === 0) {
-                    if(Math.random() < 0.15) items.push({c, r, type: 'shrimp', val:0});
-                    else {
-                        let foodType = Math.random() > 0.6 ? 'pizza' : (Math.random() > 0.5 ? 'pasta' : 'potato');
-                        items.push({c, r, type: foodType, val:100});
-                        totalFood++;
+                    // Randomly convert 5% of food to Mystery Boxes
+                    if(Math.random() < 0.05) {
+                        cell = 2; // Treat as box now
+                    } else {
+                        if(Math.random() < 0.15) items.push({c, r, type: 'shrimp', val:0});
+                        else {
+                            let foodType = Math.random() > 0.6 ? 'pizza' : (Math.random() > 0.5 ? 'pasta' : 'potato');
+                            items.push({c, r, type: foodType, val:100});
+                            totalFood++;
+                        }
+                        if(Math.random() < 0.03) items.push({c,r, type:'slots', val:0});
                     }
                 }
-                if(cell === 2) items.push({c, r, type:'box', val:0});
-                if(cell === 'P') { 
-                    player.x = x; player.y = y; player.c = c; player.r = r;
-                    MAP[r][c] = 0; 
+                
+                // BOX LOGIC (Includes converted cells)
+                if(cell === 2) {
+                    let reward = rewardDeck.length > 0 ? rewardDeck.pop() : 'pizza';
+                    items.push({c, r, type:'box', val:0, rewardType: reward});
                 }
+                
+                if(cell === 'P') { player.x = x; player.y = y; player.c = c; player.r = r; MAP[r][c] = 0; }
                 if(cell === 5) {
                     for(let i=0; i<4; i++) ghosts.push({ x:x, y:y, vx:0, vy:0, speed:parlaySpeedBase });
                 }
             }
         }
+        
+        if(!items.some(i => i.type === 'slots')) {
+             items.push({c:1, r:1, type:'slots', val:0});
+        }
     }
 
     function update() {
         if(document.getElementById('gameScreen').style.display === 'none') return;
-        if(gamePaused) {
-            gameLoop = requestAnimationFrame(update);
-            return;
-        }
+        if(gamePaused) { gameLoop = requestAnimationFrame(update); return; }
 
         if(isInvincible) {
             invincibleTimer--;
@@ -605,6 +671,7 @@
         drawMinimap();
         
         document.getElementById('foodVal').innerText = totalFood;
+        document.getElementById('scoreVal').innerText = score;
         frameCount++;
         
         if(!gameWon) gameLoop = requestAnimationFrame(update);
@@ -614,38 +681,28 @@
         let now = Date.now();
         for(let i = blockers.length - 1; i >= 0; i--) {
             let b = blockers[i];
-            if(now > b.expires) {
-                MAP[b.r][b.c] = 9; 
-                blockers.splice(i, 1);
-            }
+            if(now > b.expires) { MAP[b.r][b.c] = 9; blockers.splice(i, 1); }
         }
     }
 
     function movePlayer() {
         const speed = 14; 
-        let intendedDx = 0; let intendedDy = 0;
-        
+        let intendedDx = 0, intendedDy = 0;
         if(keys.Up) intendedDy = -speed;
         if(keys.Down) intendedDy = speed;
         if(keys.Left) intendedDx = -speed;
         if(keys.Right) intendedDx = speed;
 
-        // --- ENHANCED CORNERING ASSIST ---
         if(intendedDx === 0 && intendedDy !== 0) {
             let centerX = player.c * TILE + TILE/2;
-            if(Math.abs(player.x - centerX) < 48) { 
-                player.x = centerX;
-            }
+            if(Math.abs(player.x - centerX) < 48) player.x = centerX;
         }
         if(intendedDy === 0 && intendedDx !== 0) {
             let centerY = player.r * TILE + TILE/2;
-            if(Math.abs(player.y - centerY) < 48) {
-                player.y = centerY;
-            }
+            if(Math.abs(player.y - centerY) < 48) player.y = centerY;
         }
 
-        let dx = intendedDx;
-        let dy = intendedDy;
+        let dx = intendedDx, dy = intendedDy;
         if(dx !== 0 && dy !== 0) { dx *= 0.707; dy *= 0.707; }
 
         if(dx !== 0 || dy !== 0) {
@@ -677,9 +734,10 @@
         return false;
     }
 
-    function spawnBlocker(type, c, r) {
+    function spawnBlocker(type, c, r, duration) {
         MAP[r][c] = 8; // Set Wall
-        blockers.push({ type: type, c: c, r: r, expires: Date.now() + BLOCKER_DURATION });
+        let dur = duration || BLOCKER_DURATION;
+        blockers.push({ type: type, c: c, r: r, expires: Date.now() + dur });
         
         let neighbors = [
             {c: c+1, r: r}, {c: c-1, r: r}, {c: c, r: r+1}, {c: c, r: r-1}
@@ -750,43 +808,35 @@
             if(item.type === 'shrimp') {
                 stats.ramsay++;
                 if(AUDIO.ramsay) AUDIO.ramsay.play();
-                spawnBlocker('ramsay', item.c, item.r);
+                spawnBlocker('ramsay', item.c, item.r); 
                 items.splice(iIdx, 1);
             }
             else if(item.type === 'box') {
-                let rand = Math.random();
-                let prize = '';
-                if(rand < 0.3) {
-                    // Sheldon
+                let reward = item.rewardType;
+                
+                if(reward === 'shrimp') {
+                    // BAD BOX
                     stats.sheldon++;
                     if(AUDIO.bazinga) AUDIO.bazinga.play();
-                    spawnBlocker('sheldon', item.c, item.r);
-                    prize = 'sheldon';
-                } else if (rand < 0.6) {
-                    // Good Box - Points + Invincible
+                    spawnBlocker('sheldon', item.c, item.r, 10000); // 10 Sec Sheldon
+                    popups.push({ type: 'shrimp', x: 0, y: 0, scale: 0.1, opacity: 1.0 }); // Zoom Shrimp
+                } 
+                else {
+                    // GOOD BOX
                     score += 500; stats.box++;
-                    isInvincible = true; 
-                    invincibleTimer = 600; 
-                    if(AUDIO.chaching) AUDIO.chaching.play(); // Fixed Sound
-                    prize = 'pizza'; // Visual Only
-                } else {
-                    // Points Box
-                    score += 500; stats.box++;
-                    if(AUDIO.chaching) AUDIO.chaching.play(); // Fixed Sound
-                    prize = 'pasta'; // Visual Only
+                    isInvincible = true; invincibleTimer = 600; 
+                    if(AUDIO.chaching) AUDIO.chaching.play(); 
+                    // Visual popup of whatever food it was
+                    popups.push({ type: reward, x: 0, y: 0, scale: 0.1, opacity: 1.0 });
                 }
-                
-                // TRIGGER 3D POPUP (Center screen, zoom in)
-                popups.push({
-                    type: prize, 
-                    x: 0, // Relative to player center (0,0 in draw)
-                    y: 0, 
-                    scale: 0.1, 
-                    opacity: 1.0
-                });
                 
                 items.splice(iIdx, 1);
             } 
+            else if(item.type === 'slots') {
+                gamePaused = true;
+                openSlots();
+                items.splice(iIdx, 1);
+            }
             else {
                 score += item.val;
                 if(item.type === 'pizza') stats.pizza++;
@@ -798,7 +848,6 @@
         }
         
         let playerHit = false;
-
         ghosts.forEach(g => {
             let d = Math.sqrt((player.x-g.x)**2 + (player.y-g.y)**2);
             if(d < TILE * 0.6) {
@@ -839,40 +888,63 @@
             husband.x = husband.c * TILE + TILE/2;
             husband.y = husband.r * TILE + TILE/2;
             husband.active = true;
-            husband.timer = 1200; 
             
-            // START AS CUPID IMMEDIATELY (To ensure you see it!)
+            // Level 2: Shorter active time?
+            husband.timer = currentLevel === 2 ? 2000 : 1200; 
+            
             husband.state = 'FLYING';
             husband.vx = (Math.random() > 0.5 ? 2 : -2);
             husband.vy = (Math.random() > 0.5 ? 2 : -2);
         }
+        
         if(husband.active) {
             husband.timer--;
             
-            // --- CUPID LOGIC ---
+            // --- AI LOGIC ---
             if(husband.state === 'FLYING') {
+                if(currentLevel === 2) {
+                    // FLEE MODE
+                    // Vector away from player
+                    let dx = husband.x - player.x;
+                    let dy = husband.y - player.y;
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    if(dist < 300) { // If close, run away
+                        husband.vx = (dx / dist) * 4;
+                        husband.vy = (dy / dist) * 4;
+                    }
+                }
+                
                 husband.x += husband.vx;
                 husband.y += husband.vy;
                 if(husband.x < 0 || husband.x > WORLD_WIDTH) husband.vx = -husband.vx;
                 if(husband.y < 0 || husband.y > WORLD_HEIGHT) husband.vy = -husband.vy;
                 
-                // Land briefly if you want, but flying is cooler
-                // If timer gets low, maybe stop flying?
-                if(husband.timer < 100) husband.state = 'IDLE';
+                // Land briefly logic
+                let landChance = currentLevel === 2 ? 0.005 : 0.01;
+                if(Math.random() < landChance) {
+                     husband.state = 'IDLE';
+                     husband.landTimer = currentLevel === 2 ? 60 : 100; // Shorter rest in lvl 2
+                }
+            } else {
+                // IDLE
+                husband.landTimer--;
+                if(husband.landTimer <= 0) {
+                     husband.state = 'FLYING';
+                     husband.vx = (Math.random() - 0.5) * 6;
+                     husband.vy = (Math.random() - 0.5) * 6;
+                }
             }
 
             if(husband.timer <= 0) husband.active = false;
             
             let d = Math.sqrt((player.x-husband.x)**2 + (player.y-husband.y)**2);
             if(d < TILE) {
-                // CAUGHT HUSBAND
+                // CAUGHT
                 stats.hugs++;
                 if(AUDIO.loveyoubumbum) AUDIO.loveyoubumbum.play();
                 husband.active = false;
-                
                 gamePaused = true;
                 document.getElementById('hugScreen').style.display = 'flex';
-                
                 setTimeout(() => {
                     document.getElementById('hugScreen').style.display = 'none';
                     gamePaused = false;
@@ -899,12 +971,9 @@
         ctx.save();
         ctx.translate(-camera.x, -camera.y);
 
-        // 1. SCROLLING BG
-        if(IMAGES.vegas) {
-            ctx.drawImage(IMAGES.vegas, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-        }
+        if(IMAGES.vegas) ctx.drawImage(IMAGES.vegas, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
-        // 2. WALLS
+        // WALLS
         ctx.lineWidth = 4;
         let time = Date.now() / 20; 
         ctx.beginPath();
@@ -938,16 +1007,13 @@
             ctx.translate(husband.x, husband.y);
             
             if(husband.state === 'FLYING') {
-                // Cupid Animation
                 let scale = 1.3; 
                 ctx.scale(scale, scale);
                 if(husband.vx < 0) ctx.scale(-1, 1);
-                
                 let cImg = (Math.floor(Date.now()/100)%2===0) ? IMAGES.cupid1 : IMAGES.cupid2;
-                if(!cImg || !cImg.complete) cImg = IMAGES.husband; // Fallback
+                if(!cImg || !cImg.complete) cImg = IMAGES.husband; 
                 ctx.drawImage(cImg, -TILE/2, -TILE/2, TILE, TILE);
             } else {
-                // Idle Husband
                 let scale = 1 + Math.sin(Date.now()/200)*0.1;
                 ctx.scale(scale, scale);
                 ctx.drawImage(IMAGES.husband, -TILE/2, -TILE/2, TILE, TILE);
@@ -958,14 +1024,12 @@
         ctx.save();
         ctx.translate(player.x, player.y);
         if(player.facingLeft) ctx.scale(-1, 1);
-        
         let sprite = IMAGES.idle;
         if(keys.Up || keys.Down || keys.Left || keys.Right) {
              let frame = Math.floor(player.animFrame) % 2; 
              if(frame === 0) sprite = IMAGES.wife3;
              else sprite = IMAGES.idle;
         }
-
         if(isInvincible) {
             if(Math.floor(frameCount/5)%2===0) ctx.globalAlpha = 0.4;
             ctx.beginPath(); ctx.arc(0,0, TILE/1.5, 0, Math.PI*2);
@@ -980,19 +1044,14 @@
             ctx.globalAlpha = 1.0;
         });
 
-        // --- DRAW POPUPS (UI LAYER - FIXED CENTER) ---
         popups.forEach((p, idx) => {
             if(p.opacity > 0 && IMAGES[p.type]) {
                 ctx.save();
                 ctx.globalAlpha = p.opacity;
-                // Draw exactly over player? No, draw centered in SCREEN
-                // But we are inside translate(-camera).
-                // So (camera.x + screenW/2)
                 ctx.translate(camera.x + window.innerWidth/2, camera.y + window.innerHeight/2);
-                ctx.scale(p.scale * 3, p.scale * 3); // Make it HUGE
+                ctx.scale(p.scale * 3, p.scale * 3); 
                 ctx.drawImage(IMAGES[p.type], -75, -75, 150, 150); 
                 ctx.restore();
-                
                 p.scale += 0.05; 
                 p.opacity -= 0.015; 
             } else {
@@ -1017,25 +1076,115 @@
                 if(MAP[r][c] === 1) miniCtx.fillRect(c*TILE*scaleX, r*TILE*scaleY, TILE*scaleX, TILE*scaleY);
             }
         }
-        
         items.forEach(i => {
-            if(i.type === 'box') {
-                 miniCtx.fillStyle = "#FFD700"; 
-                 miniCtx.fillRect(i.c*TILE*scaleX, i.r*TILE*scaleY, TILE*scaleX, TILE*scaleY);
-            } else if (i.type !== 'shrimp') {
-                miniCtx.fillStyle = "#0ff"; 
-                miniCtx.fillRect(i.c*TILE*scaleX, i.r*TILE*scaleY, 3, 3);
-            }
+            if(i.type === 'box') { miniCtx.fillStyle = "#FFD700"; miniCtx.fillRect(i.c*TILE*scaleX, i.r*TILE*scaleY, TILE*scaleX, TILE*scaleY); }
+            else if (i.type === 'slots') { miniCtx.fillStyle = "#F0F"; miniCtx.fillRect(i.c*TILE*scaleX, i.r*TILE*scaleY, 5, 5); } 
+            else if (i.type !== 'shrimp') { miniCtx.fillStyle = "#0ff"; miniCtx.fillRect(i.c*TILE*scaleX, i.r*TILE*scaleY, 3, 3); }
         });
+        miniCtx.fillStyle = "#00ff00"; miniCtx.beginPath(); miniCtx.arc(player.x*scaleX, player.y*scaleY, 3, 0, Math.PI*2); miniCtx.fill();
+        miniCtx.fillStyle = "#ff0000"; ghosts.forEach(g => { miniCtx.beginPath(); miniCtx.arc(g.x*scaleX, g.y*scaleY, 2, 0, Math.PI*2); miniCtx.fill(); });
+        if(husband.active) { miniCtx.fillStyle = "white"; miniCtx.fillRect((husband.x-TILE/2)*scaleX, (husband.y-TILE/2)*scaleY, TILE*scaleX, TILE*scaleY); }
+    }
 
-        miniCtx.fillStyle = "#00ff00";
-        miniCtx.beginPath(); miniCtx.arc(player.x*scaleX, player.y*scaleY, 3, 0, Math.PI*2); miniCtx.fill();
-        miniCtx.fillStyle = "#ff0000";
-        ghosts.forEach(g => { miniCtx.beginPath(); miniCtx.arc(g.x*scaleX, g.y*scaleY, 2, 0, Math.PI*2); miniCtx.fill(); });
-        if(husband.active) {
-            miniCtx.fillStyle = "white";
-            miniCtx.fillRect((husband.x-TILE/2)*scaleX, (husband.y-TILE/2)*scaleY, TILE*scaleX, TILE*scaleY);
+    // --- SLOT MACHINE LOGIC ---
+    function openSlots() {
+        document.getElementById('slotScreen').style.display = 'flex';
+        document.getElementById('spinBtn').style.display = 'inline-block';
+        document.getElementById('closeSlotBtn').style.display = 'none';
+        document.getElementById('slotMessage').innerText = "";
+        ['reel1','reel2','reel3'].forEach(id => document.getElementById(id).innerHTML = '?');
+    }
+
+    function spinSlots() {
+        document.getElementById('spinBtn').style.display = 'none';
+        const symbols = ['cupid1', 'pizza', 'pasta', 'shrimp', 'potato', 'husband'];
+        
+        let spins = 0;
+        let interval = setInterval(() => {
+            ['reel1','reel2','reel3'].forEach(id => {
+                let randSym = symbols[Math.floor(Math.random()*symbols.length)];
+                document.getElementById(id).innerHTML = `<img src="${randSym}.png">`;
+            });
+            spins++;
+            if(spins > 20) {
+                clearInterval(interval);
+                finalizeSlots(symbols);
+            }
+        }, 100);
+    }
+
+    function finalizeSlots(symbols) {
+        let r1 = symbols[Math.floor(Math.random()*symbols.length)];
+        let r2 = symbols[Math.floor(Math.random()*symbols.length)];
+        let r3 = symbols[Math.floor(Math.random()*symbols.length)];
+        
+        document.getElementById('reel1').innerHTML = `<img src="${r1}.png">`;
+        document.getElementById('reel2').innerHTML = `<img src="${r2}.png">`;
+        document.getElementById('reel3').innerHTML = `<img src="${r3}.png">`;
+        
+        // CHECK WINS
+        let results = [r1, r2, r3];
+        let msg = "";
+        let win = false;
+        let shrimpCount = results.filter(s => s === 'shrimp').length;
+        let cupidCount = results.filter(s => s === 'cupid1' || s === 'husband').length;
+
+        if(r1 === r2 && r2 === r3) {
+            msg = "JACKPOT! 5000 POINTS!";
+            score += 5000;
+            if(AUDIO.chaching) AUDIO.chaching.play();
+        } else if (cupidCount >= 2) {
+            msg = "LOVE BIRDS! 2000 POINTS!";
+            score += 2000;
+            if(AUDIO.chaching) AUDIO.chaching.play();
+        } else if (shrimpCount > 0) {
+            // SHRIMP PENALTY
+            setTimeout(() => {
+                playRandomVideo();
+            }, 1000);
+            return; // Don't show Close button yet
+        } else {
+            msg = "Better luck next time!";
         }
+
+        document.getElementById('slotMessage').innerText = msg;
+        document.getElementById('closeSlotBtn').style.display = 'inline-block';
+    }
+
+    function closeSlots() {
+        document.getElementById('slotScreen').style.display = 'none';
+        gamePaused = false;
+    }
+
+    // --- VIDEO PENALTY LOGIC ---
+    function playRandomVideo() {
+        let vScreen = document.getElementById('videoScreen');
+        let vid = document.getElementById('rewardVideo');
+        let btn = document.getElementById('closeVideoBtn');
+        
+        vScreen.style.display = 'flex';
+        btn.style.display = 'none'; // Lock
+        
+        // Pick random video no repeats
+        if(availableVideos.length === 0) availableVideos = [...VIDEO_PLAYLIST];
+        let rIdx = Math.floor(Math.random() * availableVideos.length);
+        let vSrc = availableVideos[rIdx];
+        availableVideos.splice(rIdx, 1);
+        
+        vid.src = vSrc;
+        vid.play();
+
+        // Unlock after 10s
+        setTimeout(() => {
+            btn.style.display = 'block';
+        }, 10000);
+    }
+
+    function closeVideo() {
+        let vid = document.getElementById('rewardVideo');
+        vid.pause();
+        document.getElementById('videoScreen').style.display = 'none';
+        closeSlots(); // Return to game
     }
 
     // --- WINNER LOGIC ---
@@ -1044,6 +1193,9 @@
         document.getElementById('gameScreen').style.display = 'none';
         document.getElementById('winnerScreen').style.display = 'block';
         
+        if(currentLevel === 1) document.getElementById('nextLevelBtn').style.display = 'inline-block';
+        else document.getElementById('nextLevelBtn').style.display = 'none';
+
         let wc = document.getElementById('winnerCanvas');
         wc.width = window.innerWidth;
         wc.height = window.innerHeight;
@@ -1064,15 +1216,11 @@
         let wCtx = wc.getContext('2d');
         
         wCtx.clearRect(0, 0, wc.width, wc.height);
-        if(IMAGES.winner) {
-            wCtx.drawImage(IMAGES.winner, 0, 0, wc.width, wc.height);
-        }
+        if(IMAGES.winner) { wCtx.drawImage(IMAGES.winner, 0, 0, wc.width, wc.height); }
 
         if(winAnim.state === 'RUN_TO_HUG') {
             winAnim.wifeX += 6; 
-            if(winAnim.wifeX >= winAnim.husbX - 80) {
-                winAnim.state = 'HUGGING';
-            }
+            if(winAnim.wifeX >= winAnim.husbX - 80) winAnim.state = 'HUGGING';
         }
 
         winAnim.spawnTimer++;
@@ -1083,14 +1231,7 @@
             let isForeground = Math.random() > 0.5;
             let spawnY = isForeground ? winAnim.groundY + 20 : winAnim.groundY - 140; 
             
-            winAnim.items.push({
-                type: type,
-                x: -100,
-                y: spawnY,
-                vx: 4 + Math.random() * 2, 
-                kicked: false,
-                vy: 0
-            });
+            winAnim.items.push({ type: type, x: -100, y: spawnY, vx: 4 + Math.random() * 2, kicked: false, vy: 0 });
         }
 
         let bgItems = winAnim.items.filter(i => i.y < winAnim.groundY);
@@ -1098,21 +1239,16 @@
 
         let drawItem = (item) => {
              item.x += item.vx;
-             
              if(item.type === 'shrimp' && !item.kicked && winAnim.state !== 'RUN_TO_HUG') {
                  if(item.x > winAnim.husbX - 100 && item.x < winAnim.husbX + 50) {
                      winAnim.state = 'KICKING';
                      winAnim.kickTimer = 30; 
                      item.kicked = true;
-                     item.vx = 15; 
-                     item.vy = -15; 
+                     item.vx = 15; item.vy = -15; 
                      if(AUDIO.splat) AUDIO.splat.play();
                  }
              }
-             if(item.kicked) {
-                 item.y += item.vy;
-                 item.vy += 1; 
-             }
+             if(item.kicked) { item.y += item.vy; item.vy += 1; }
              if(IMAGES[item.type]) wCtx.drawImage(IMAGES[item.type], item.x, item.y, 75, 75);
         };
 
@@ -1127,7 +1263,6 @@
         else if (winAnim.state === 'KICKING') {
             wCtx.drawImage(IMAGES.husband, winAnim.husbX + 30, husbY, 150, 150);
             wCtx.drawImage(IMAGES.wife3, winAnim.wifeX - 20, wifeY, 150, 150);
-            
             winAnim.kickTimer--;
             if(winAnim.kickTimer <= 0) winAnim.state = 'HUGGING'; 
         }
@@ -1138,7 +1273,6 @@
         }
 
         fgItems.forEach(drawItem);
-
         requestAnimationFrame(updateWinnerAnim);
     }
 
@@ -1146,17 +1280,12 @@
         saveScore(score);
         cancelAnimationFrame(gameLoop);
         gameWon = false; 
-
         if(AUDIO.hangover) AUDIO.hangover.pause();
-        if(AUDIO.endgame) {
-            AUDIO.endgame.currentTime = 0;
-            AUDIO.endgame.play();
-        }
+        if(AUDIO.endgame) { AUDIO.endgame.currentTime = 0; AUDIO.endgame.play(); }
 
         document.getElementById('winnerScreen').style.display = 'none'; 
         document.getElementById('gameScreen').style.display = 'none';
         document.getElementById('gameOverScreen').style.display = 'block';
-        
         document.getElementById('receiptContainer').style.bottom = "-150%";
 
         document.getElementById('statPizza').innerText = stats.pizza;
