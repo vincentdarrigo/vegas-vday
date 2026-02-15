@@ -419,7 +419,7 @@
         timer:0, 
         lastScore: 0, 
         vx:0, vy:0,
-        state: 'IDLE' // IDLE, FLYING
+        state: 'FLYING' // START FLYING IMMEDIATELY TO TEST
     };
     
     let gamePaused = false;
@@ -631,7 +631,6 @@
         if(keys.Right) intendedDx = speed;
 
         // --- ENHANCED CORNERING ASSIST ---
-        // Increased snap distance from 35 to 48 for forgiving turns
         if(intendedDx === 0 && intendedDy !== 0) {
             let centerX = player.c * TILE + TILE/2;
             if(Math.abs(player.x - centerX) < 48) { 
@@ -764,25 +763,28 @@
                     spawnBlocker('sheldon', item.c, item.r);
                     prize = 'sheldon';
                 } else if (rand < 0.6) {
-                    // Good Box
+                    // Good Box - Points + Invincible
                     score += 500; stats.box++;
                     isInvincible = true; 
                     invincibleTimer = 600; 
-                    if(AUDIO.loveyoubumbum) AUDIO.loveyoubumbum.play();
-                    prize = 'pizza'; // Just visual
+                    if(AUDIO.chaching) AUDIO.chaching.play(); // Fixed Sound
+                    prize = 'pizza'; // Visual Only
                 } else {
-                    // Points
+                    // Points Box
                     score += 500; stats.box++;
-                    prize = 'pasta'; // Visual
+                    if(AUDIO.chaching) AUDIO.chaching.play(); // Fixed Sound
+                    prize = 'pasta'; // Visual Only
                 }
-                // TRIGGER 3D POPUP
+                
+                // TRIGGER 3D POPUP (Center screen, zoom in)
                 popups.push({
                     type: prize, 
-                    x: window.innerWidth/2, 
-                    y: window.innerHeight/2, 
+                    x: 0, // Relative to player center (0,0 in draw)
+                    y: 0, 
                     scale: 0.1, 
                     opacity: 1.0
                 });
+                
                 items.splice(iIdx, 1);
             } 
             else {
@@ -837,32 +839,26 @@
             husband.x = husband.c * TILE + TILE/2;
             husband.y = husband.r * TILE + TILE/2;
             husband.active = true;
-            husband.timer = 1200; // Total duration
-            husband.state = 'IDLE';
-            husband.vx = 0; husband.vy = 0;
+            husband.timer = 1200; 
+            
+            // START AS CUPID IMMEDIATELY (To ensure you see it!)
+            husband.state = 'FLYING';
+            husband.vx = (Math.random() > 0.5 ? 2 : -2);
+            husband.vy = (Math.random() > 0.5 ? 2 : -2);
         }
         if(husband.active) {
             husband.timer--;
             
-            // --- CUPID STATE MACHINE ---
-            if(husband.state === 'IDLE') {
-                // Stay still for first 200 frames (approx 3 sec)
-                if(husband.timer < 1000) {
-                     husband.state = 'FLYING';
-                     husband.vx = (Math.random() > 0.5 ? 2 : -2);
-                     husband.vy = (Math.random() > 0.5 ? 2 : -2);
-                }
-            } else if (husband.state === 'FLYING') {
-                // Move and bounce
+            // --- CUPID LOGIC ---
+            if(husband.state === 'FLYING') {
                 husband.x += husband.vx;
                 husband.y += husband.vy;
                 if(husband.x < 0 || husband.x > WORLD_WIDTH) husband.vx = -husband.vx;
                 if(husband.y < 0 || husband.y > WORLD_HEIGHT) husband.vy = -husband.vy;
                 
-                // Land briefly before disappearing?
-                if(husband.timer < 200) {
-                    husband.state = 'IDLE';
-                }
+                // Land briefly if you want, but flying is cooler
+                // If timer gets low, maybe stop flying?
+                if(husband.timer < 100) husband.state = 'IDLE';
             }
 
             if(husband.timer <= 0) husband.active = false;
@@ -943,13 +939,12 @@
             
             if(husband.state === 'FLYING') {
                 // Cupid Animation
-                let scale = 1.2; // Cupid is slightly bigger?
+                let scale = 1.3; 
                 ctx.scale(scale, scale);
-                // Flip if moving left
                 if(husband.vx < 0) ctx.scale(-1, 1);
                 
                 let cImg = (Math.floor(Date.now()/100)%2===0) ? IMAGES.cupid1 : IMAGES.cupid2;
-                if(!cImg) cImg = IMAGES.husband; // Fallback
+                if(!cImg || !cImg.complete) cImg = IMAGES.husband; // Fallback
                 ctx.drawImage(cImg, -TILE/2, -TILE/2, TILE, TILE);
             } else {
                 // Idle Husband
@@ -985,26 +980,28 @@
             ctx.globalAlpha = 1.0;
         });
 
-        ctx.restore();
-        
-        // --- DRAW POPUPS (UI LAYER) ---
-        // These are drawn over everything, no camera translation
+        // --- DRAW POPUPS (UI LAYER - FIXED CENTER) ---
         popups.forEach((p, idx) => {
             if(p.opacity > 0 && IMAGES[p.type]) {
                 ctx.save();
                 ctx.globalAlpha = p.opacity;
-                ctx.translate(p.x, p.y);
-                ctx.scale(p.scale, p.scale);
-                ctx.drawImage(IMAGES[p.type], -100, -100, 200, 200); // Draw center
+                // Draw exactly over player? No, draw centered in SCREEN
+                // But we are inside translate(-camera).
+                // So (camera.x + screenW/2)
+                ctx.translate(camera.x + window.innerWidth/2, camera.y + window.innerHeight/2);
+                ctx.scale(p.scale * 3, p.scale * 3); // Make it HUGE
+                ctx.drawImage(IMAGES[p.type], -75, -75, 150, 150); 
                 ctx.restore();
                 
-                p.scale += 0.05; // Zoom in
-                p.opacity -= 0.02; // Fade out
+                p.scale += 0.05; 
+                p.opacity -= 0.015; 
             } else {
                 popups.splice(idx, 1);
             }
         });
 
+        ctx.restore();
+        
         document.getElementById('scoreVal').innerText = score;
     }
 
@@ -1021,14 +1018,12 @@
             }
         }
         
-        // Draw Gift Boxes AND ALL FOOD on Minimap
         items.forEach(i => {
             if(i.type === 'box') {
-                 miniCtx.fillStyle = "#FFD700"; // Gold
+                 miniCtx.fillStyle = "#FFD700"; 
                  miniCtx.fillRect(i.c*TILE*scaleX, i.r*TILE*scaleY, TILE*scaleX, TILE*scaleY);
             } else if (i.type !== 'shrimp') {
-                // Show Food as Cyan Dots
-                miniCtx.fillStyle = "#0ff"; // Cyan
+                miniCtx.fillStyle = "#0ff"; 
                 miniCtx.fillRect(i.c*TILE*scaleX, i.r*TILE*scaleY, 3, 3);
             }
         });
@@ -1043,20 +1038,18 @@
         }
     }
 
-    // --- WINNER LOGIC (DIRECTOR'S CUT) ---
+    // --- WINNER LOGIC ---
     function startWinnerScreen() {
         gameWon = true;
         document.getElementById('gameScreen').style.display = 'none';
         document.getElementById('winnerScreen').style.display = 'block';
         
-        // Setup Animation Vars
         let wc = document.getElementById('winnerCanvas');
         wc.width = window.innerWidth;
         wc.height = window.innerHeight;
         
         winAnim.groundY = wc.height * 0.85; 
         winAnim.wifeX = -200;
-        // MOVED LEFT: Was 0.8, now 0.55 (Center-Right)
         winAnim.husbX = wc.width * 0.55; 
         winAnim.state = 'RUN_TO_HUG';
         winAnim.items = [];
@@ -1070,13 +1063,11 @@
         let wc = document.getElementById('winnerCanvas');
         let wCtx = wc.getContext('2d');
         
-        // Clear & Draw BG
         wCtx.clearRect(0, 0, wc.width, wc.height);
         if(IMAGES.winner) {
             wCtx.drawImage(IMAGES.winner, 0, 0, wc.width, wc.height);
         }
 
-        // 1. Wife Running Logic
         if(winAnim.state === 'RUN_TO_HUG') {
             winAnim.wifeX += 6; 
             if(winAnim.wifeX >= winAnim.husbX - 80) {
@@ -1084,7 +1075,6 @@
             }
         }
 
-        // 2. Item Spawning Logic
         winAnim.spawnTimer++;
         if(winAnim.spawnTimer > 60 && Math.random() > 0.5) {
             winAnim.spawnTimer = 0;
@@ -1103,14 +1093,12 @@
             });
         }
 
-        // 3. Move & Draw Items
         let bgItems = winAnim.items.filter(i => i.y < winAnim.groundY);
         let fgItems = winAnim.items.filter(i => i.y >= winAnim.groundY);
 
         let drawItem = (item) => {
              item.x += item.vx;
              
-             // KICK LOGIC
              if(item.type === 'shrimp' && !item.kicked && winAnim.state !== 'RUN_TO_HUG') {
                  if(item.x > winAnim.husbX - 100 && item.x < winAnim.husbX + 50) {
                      winAnim.state = 'KICKING';
@@ -1130,7 +1118,6 @@
 
         bgItems.forEach(drawItem);
 
-        // 4. Draw Couple
         let husbY = winAnim.groundY - 150;
         let wifeY = winAnim.groundY - 150;
         
